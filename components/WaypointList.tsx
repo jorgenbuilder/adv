@@ -3,7 +3,7 @@
 import { useRouteState } from '@/lib/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, GripVertical, MapPin } from 'lucide-react';
+import { Trash2, GripVertical, MapPin, Diamond } from 'lucide-react';
 import type { Waypoint } from '@/types';
 
 /**
@@ -78,48 +78,67 @@ export function WaypointList() {
       </div>
 
       <div className="space-y-2">
-        {waypoints.map((waypoint, index) => (
-          <Card
-            key={waypoint.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, index)}
-            className="cursor-move hover:border-primary/50 transition-colors"
-          >
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                {/* Drag handle */}
-                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        {waypoints.map((waypoint, index) => {
+          const isAnchor = waypoint.type === 'anchor';
+          // Calculate display number (only count primary waypoints up to this index)
+          const displayNumber = waypoints
+            .slice(0, index + 1)
+            .filter((wp) => wp.type !== 'anchor').length;
 
-                {/* Waypoint number */}
-                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {index + 1}
+          return (
+            <Card
+              key={waypoint.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`cursor-move hover:border-primary/50 transition-colors ${
+                isAnchor ? 'opacity-80' : ''
+              }`}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  {/* Drag handle */}
+                  <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+
+                  {/* Waypoint indicator */}
+                  {isAnchor ? (
+                    // Anchor point - diamond icon
+                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                      <Diamond className="w-4 h-4 text-blue-500" />
+                    </div>
+                  ) : (
+                    // Primary waypoint - numbered circle
+                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {displayNumber}
+                    </div>
+                  )}
+
+                  {/* Waypoint info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {waypoint.label ||
+                        (isAnchor ? 'Anchor point' : `Waypoint ${displayNumber}`)}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {formatCoords(waypoint)}
+                    </p>
+                  </div>
+
+                  {/* Delete button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeWaypoint(waypoint.id)}
+                    className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
-
-                {/* Waypoint info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {waypoint.label || `Waypoint ${index + 1}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {formatCoords(waypoint)}
-                  </p>
-                </div>
-
-                {/* Delete button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeWaypoint(waypoint.id)}
-                  className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Distance summary */}

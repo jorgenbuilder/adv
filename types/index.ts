@@ -39,12 +39,16 @@ export interface LatLng {
   lng: number;
 }
 
+// Waypoint type: 'primary' for main waypoints, 'anchor' for intermediate control points
+export type WaypointType = 'primary' | 'anchor';
+
 // Waypoint for route planning
 export interface Waypoint {
   id: string;
   position: LatLng;
   snappedPosition: LatLng | null;
   label?: string;
+  type: WaypointType;
 }
 
 // Route state

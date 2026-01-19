@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import type {
   LatLng,
   Waypoint,
+  WaypointType,
   Route,
   RoadFilters,
   RoadClass,
@@ -31,7 +32,8 @@ interface MapState {
 interface RouteState {
   waypoints: Waypoint[];
   calculatedRoute: Route | null;
-  addWaypoint: (position: LatLng) => void;
+  addWaypoint: (position: LatLng, type?: WaypointType) => void;
+  insertWaypoint: (position: LatLng, afterIndex: number, type?: WaypointType) => void;
   removeWaypoint: (id: string) => void;
   updateWaypoint: (id: string, position: LatLng) => void;
   reorderWaypoints: (fromIndex: number, toIndex: number) => void;
@@ -111,7 +113,7 @@ export const useAppStore = create<AppState>()(
       // Route state
       waypoints: [],
       calculatedRoute: null,
-      addWaypoint: (position) =>
+      addWaypoint: (position, type = 'primary') =>
         set(
           (state) => ({
             waypoints: [
@@ -120,11 +122,29 @@ export const useAppStore = create<AppState>()(
                 id: generateWaypointId(),
                 position,
                 snappedPosition: null, // Will be set by road snapping
+                type,
               },
             ],
           }),
           undefined,
           'addWaypoint'
+        ),
+      insertWaypoint: (position, afterIndex, type = 'anchor') =>
+        set(
+          (state) => {
+            const waypoints = [...state.waypoints];
+            const newWaypoint: Waypoint = {
+              id: generateWaypointId(),
+              position,
+              snappedPosition: null,
+              type,
+            };
+            // Insert after the specified index
+            waypoints.splice(afterIndex + 1, 0, newWaypoint);
+            return { waypoints };
+          },
+          undefined,
+          'insertWaypoint'
         ),
       removeWaypoint: (id) =>
         set(
@@ -268,6 +288,7 @@ export const useRouteState = () =>
     waypoints: state.waypoints,
     calculatedRoute: state.calculatedRoute,
     addWaypoint: state.addWaypoint,
+    insertWaypoint: state.insertWaypoint,
     removeWaypoint: state.removeWaypoint,
     updateWaypoint: state.updateWaypoint,
     reorderWaypoints: state.reorderWaypoints,

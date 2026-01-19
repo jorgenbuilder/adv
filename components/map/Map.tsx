@@ -174,16 +174,23 @@ export function Map() {
         <RouteLayer />
 
         {/* Waypoint markers */}
-        {waypoints.map((waypoint, index) => (
-          <WaypointMarkerComponent
-            key={waypoint.id}
-            waypoint={waypoint}
-            index={index}
-            isSelected={selectedWaypoint === waypoint.id}
-            onClick={handleMarkerClick}
-            onDragEnd={handleMarkerDragEnd}
-          />
-        ))}
+        {waypoints.map((waypoint, index) => {
+          // Calculate display number (only count primary waypoints)
+          const displayNumber = waypoints
+            .slice(0, index + 1)
+            .filter((wp) => wp.type !== 'anchor').length;
+          return (
+            <WaypointMarkerComponent
+              key={waypoint.id}
+              waypoint={waypoint}
+              index={index}
+              displayNumber={displayNumber}
+              isSelected={selectedWaypoint === waypoint.id}
+              onClick={handleMarkerClick}
+              onDragEnd={handleMarkerDragEnd}
+            />
+          );
+        })}
       </MapGL>
 
       {/* Loading indicator */}
@@ -209,6 +216,7 @@ export function Map() {
 interface WaypointMarkerProps {
   waypoint: Waypoint;
   index: number;
+  displayNumber: number;
   isSelected: boolean;
   onClick: (id: string, e: React.MouseEvent) => void;
   onDragEnd: (id: string, lng: number, lat: number) => void;
@@ -216,18 +224,19 @@ interface WaypointMarkerProps {
 
 function WaypointMarkerComponent({
   waypoint,
-  index,
+  displayNumber,
   isSelected,
   onClick,
   onDragEnd,
 }: WaypointMarkerProps) {
   const position = waypoint.snappedPosition || waypoint.position;
+  const isAnchor = waypoint.type === 'anchor';
 
   return (
     <Marker
       longitude={position.lng}
       latitude={position.lat}
-      anchor="bottom"
+      anchor={isAnchor ? 'center' : 'bottom'}
       draggable={true}
       onDragEnd={(e) => onDragEnd(waypoint.id, e.lngLat.lng, e.lngLat.lat)}
     >
@@ -238,31 +247,56 @@ function WaypointMarkerComponent({
           ${isSelected ? 'scale-125' : 'hover:scale-110'}
         `}
       >
-        {/* Marker pin */}
-        <div
-          className={`
-            w-8 h-8 rounded-full flex items-center justify-center
-            font-bold text-white text-sm shadow-lg
-            ${isSelected ? 'bg-red-500 ring-2 ring-white' : 'bg-blue-500'}
-          `}
-        >
-          {index + 1}
-        </div>
-        {/* Pin tail */}
-        <div
-          className={`
-            w-0 h-0 mx-auto -mt-1
-            border-l-[8px] border-l-transparent
-            border-r-[8px] border-r-transparent
-            border-t-[12px]
-            ${isSelected ? 'border-t-red-500' : 'border-t-blue-500'}
-          `}
-        />
-        {/* Delete hint when selected */}
-        {isSelected && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow">
-            Click again to delete
-          </div>
+        {isAnchor ? (
+          // Anchor point - smaller diamond shape
+          <>
+            <div
+              className={`
+                w-4 h-4 rotate-45 flex items-center justify-center
+                shadow-lg border-2
+                ${isSelected
+                  ? 'bg-orange-500 border-white'
+                  : 'bg-white border-blue-500'
+                }
+              `}
+            />
+            {/* Delete hint when selected */}
+            {isSelected && (
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow">
+                Click to delete
+              </div>
+            )}
+          </>
+        ) : (
+          // Primary waypoint - numbered pin
+          <>
+            {/* Marker pin */}
+            <div
+              className={`
+                w-8 h-8 rounded-full flex items-center justify-center
+                font-bold text-white text-sm shadow-lg
+                ${isSelected ? 'bg-red-500 ring-2 ring-white' : 'bg-blue-500'}
+              `}
+            >
+              {displayNumber}
+            </div>
+            {/* Pin tail */}
+            <div
+              className={`
+                w-0 h-0 mx-auto -mt-1
+                border-l-[8px] border-l-transparent
+                border-r-[8px] border-r-transparent
+                border-t-[12px]
+                ${isSelected ? 'border-t-red-500' : 'border-t-blue-500'}
+              `}
+            />
+            {/* Delete hint when selected */}
+            {isSelected && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow">
+                Click again to delete
+              </div>
+            )}
+          </>
         )}
       </div>
     </Marker>
