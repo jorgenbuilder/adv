@@ -20,6 +20,9 @@
 # production
 /build
 
+# data directory (large geodata files)
+/data
+
 # misc
 .DS_Store
 *.pem
