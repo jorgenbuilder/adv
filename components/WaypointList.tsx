@@ -96,20 +96,20 @@ export function WaypointList() {
                 isAnchor ? 'opacity-80' : ''
               }`}
             >
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  {/* Drag handle */}
-                  <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <CardContent className="p-3 md:p-3 py-4 md:py-3">
+                <div className="flex items-center gap-3 md:gap-2">
+                  {/* Drag handle - larger touch target on mobile */}
+                  <GripVertical className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0 touch-manipulation" />
 
                   {/* Waypoint indicator */}
                   {isAnchor ? (
                     // Anchor point - diamond icon
-                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                      <Diamond className="w-4 h-4 text-blue-500" />
+                    <div className="w-8 h-8 md:w-6 md:h-6 flex items-center justify-center flex-shrink-0">
+                      <Diamond className="w-5 h-5 md:w-4 md:h-4 text-blue-500" />
                     </div>
                   ) : (
                     // Primary waypoint - numbered circle
-                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <div className="w-8 h-8 md:w-6 md:h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm md:text-xs font-bold flex-shrink-0">
                       {displayNumber}
                     </div>
                   )}
@@ -125,14 +125,14 @@ export function WaypointList() {
                     </p>
                   </div>
 
-                  {/* Delete button */}
+                  {/* Delete button - larger touch target on mobile */}
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => removeWaypoint(waypoint.id)}
-                    className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                    className="flex-shrink-0 h-10 w-10 md:h-8 md:w-8 text-muted-foreground hover:text-destructive active:text-destructive touch-manipulation"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
                   </Button>
                 </div>
               </CardContent>

@@ -26,9 +26,14 @@ export function ShareButton() {
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleShare}>
-      <Share2 className="w-4 h-4 mr-2" />
-      Share
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleShare}
+      className="h-11 md:h-9 w-full md:w-auto justify-start md:justify-center"
+    >
+      <Share2 className="w-4 h-4 mr-3 md:mr-2" />
+      Share Route
     </Button>
   );
 }

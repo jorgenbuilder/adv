@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { URLSyncProvider } from "@/lib/use-url-sync";
@@ -19,13 +19,20 @@ export const metadata: Metadata = {
   description: "A web-based map tool for exploring roads on Vancouver Island and planning motorcycle adventures",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="touch-manipulation">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
