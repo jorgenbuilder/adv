@@ -15,6 +15,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useMapState, useRouteState } from '@/lib/store';
 import { MAPTILER_KEY } from '@/lib/constants';
 import { RoadLayer } from './RoadLayer';
+import { RouteLayer } from './RouteLayer';
 import type { Waypoint } from '@/types';
 
 // MapTiler satellite style URL with API key
@@ -168,6 +169,9 @@ export function Map() {
 
         {/* Road overlay from PMTiles */}
         <RoadLayer />
+
+        {/* Route line between waypoints */}
+        <RouteLayer />
 
         {/* Waypoint markers */}
         {waypoints.map((waypoint, index) => (
