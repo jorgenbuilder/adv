@@ -2,9 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import MapGL, {
-  NavigationControl,
   ScaleControl,
-  GeolocateControl,
   Marker,
   MapRef,
   ViewStateChangeEvent,
@@ -28,10 +26,9 @@ const SATELLITE_STYLE = `https://api.maptiler.com/maps/hybrid/style.json?key=${M
  * Features:
  * - Satellite imagery from MapTiler
  * - 3D terrain with setTerrain() API
- * - Navigation controls
- * - Geolocation
  * - Scale bar
  * - Click to add waypoints
+ * - Legend in top right corner
  */
 export function Map() {
   const mapRef = useRef<MapRef>(null);
@@ -159,12 +156,6 @@ export function Map() {
         style={{ width: '100%', height: '100%' }}
         cursor={mapLoaded ? 'crosshair' : 'wait'}
       >
-        {/* Navigation controls (zoom, compass) */}
-        <NavigationControl position="top-right" visualizePitch={true} />
-
-        {/* Geolocation control */}
-        <GeolocateControl position="top-right" trackUserLocation={true} />
-
         {/* Scale bar */}
         <ScaleControl position="bottom-right" maxWidth={100} unit="metric" />
 
@@ -208,8 +199,8 @@ export function Map() {
         </div>
       )}
 
-      {/* Legend card overlay - positioned below navigation controls */}
-      <div className="absolute top-32 right-2.5 z-10">
+      {/* Legend card overlay - positioned in very top right corner */}
+      <div className="absolute top-2 right-2 z-10">
         <LegendCard />
       </div>
     </div>
