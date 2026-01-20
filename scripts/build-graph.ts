@@ -263,7 +263,8 @@ async function main() {
   console.log('');
   console.log(`Writing: ${OUTPUT_GRAPH}`);
 
-  fs.writeFileSync(OUTPUT_GRAPH, JSON.stringify(graph, null, 2));
+  // Write minified JSON for smaller file size (reduces from ~120MB to ~70MB)
+  fs.writeFileSync(OUTPUT_GRAPH, JSON.stringify(graph));
 
   const stats = fs.statSync(OUTPUT_GRAPH);
   const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
