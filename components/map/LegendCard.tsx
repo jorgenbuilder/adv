@@ -238,6 +238,7 @@ export function LegendCard() {
       <div
         className={`
           bg-background/90 backdrop-blur-sm rounded-lg shadow-lg border p-2 w-44 text-xs
+          max-h-[calc(100vh-8rem)] overflow-y-auto
           ${legendExpanded ? 'block' : 'hidden'} sm:block
         `}
       >

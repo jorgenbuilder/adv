@@ -91,11 +91,11 @@ export default function Home() {
                 </span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-[60vh] max-h-[60vh]">
-              <SheetHeader className="pb-2">
+            <SheetContent side="bottom" className="h-[60vh] max-h-[calc(60vh-env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)]">
+              <SheetHeader className="pb-2 flex-shrink-0">
                 <SheetTitle>Route Waypoints</SheetTitle>
               </SheetHeader>
-              <div className="overflow-auto flex-1 -mx-4 px-4">
+              <div className="overflow-y-auto flex-1 min-h-0 -mx-4 px-4">
                 <WaypointList />
               </div>
             </SheetContent>
