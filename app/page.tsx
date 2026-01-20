@@ -14,8 +14,37 @@ import {
 import { useRouteState } from '@/lib/store';
 import { MapPin } from 'lucide-react';
 
+/**
+ * Format distance in meters to a human readable string
+ */
+function formatDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)}m`;
+  }
+  const km = meters / 1000;
+  if (km < 10) {
+    return `${km.toFixed(1)}km`;
+  }
+  return `${Math.round(km)}km`;
+}
+
+/**
+ * Format time in seconds to a human readable string
+ */
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  if (hours === 0) {
+    return `${minutes}min`;
+  }
+  if (minutes === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
 export default function Home() {
-  const { waypoints } = useRouteState();
+  const { waypoints, calculatedRoute } = useRouteState();
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden">
@@ -43,20 +72,22 @@ export default function Home() {
                 size="default"
                 className="shadow-lg gap-2"
               >
-                <div className="relative">
-                  <MapPin className="w-5 h-5" />
-                  {waypoints.length > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                      {waypoints.length}
-                    </span>
+                <MapPin className="w-5 h-5 flex-shrink-0" />
+                <span className="text-left">
+                  {waypoints.length === 0 ? (
+                    'Add Waypoints'
+                  ) : calculatedRoute && calculatedRoute.distance > 0 ? (
+                    <>
+                      {waypoints.length} {waypoints.length === 1 ? 'Point' : 'Points'}
+                      {', '}
+                      {formatDistance(calculatedRoute.distance)}
+                      {calculatedRoute.travelTime && calculatedRoute.travelTime > 0 && (
+                        <>, {formatTime(calculatedRoute.travelTime)}</>
+                      )}
+                    </>
+                  ) : (
+                    `${waypoints.length} ${waypoints.length === 1 ? 'Waypoint' : 'Waypoints'}`
                   )}
-                </div>
-                <span>
-                  {waypoints.length === 0
-                    ? 'Waypoints'
-                    : waypoints.length === 1
-                    ? '1 Waypoint'
-                    : `${waypoints.length} Waypoints`}
                 </span>
               </Button>
             </SheetTrigger>
