@@ -194,8 +194,11 @@ export function Map() {
         </div>
       )}
 
-      {/* Legend card overlay - positioned in top right corner with safe area support */}
-      <div className="absolute top-14 right-2 z-10 sm:top-2" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* Legend card overlay - positioned in bottom right on mobile, top right on desktop */}
+      <div
+        className="absolute z-10 right-2 bottom-6 sm:bottom-auto sm:top-2"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <LegendCard />
       </div>
     </div>

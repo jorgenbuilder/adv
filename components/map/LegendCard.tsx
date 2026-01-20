@@ -1,6 +1,8 @@
 'use client';
 
-import { useFilterState } from '@/lib/store';
+import { useEffect, useRef } from 'react';
+import { Map } from 'lucide-react';
+import { useFilterState, useUIState } from '@/lib/store';
 import { ROAD_CLASS_STYLES } from '@/lib/constants';
 import type { RoadClass, RoadSurface } from '@/types';
 
@@ -111,14 +113,13 @@ function SurfaceItem({ label, checked, onChange, modifier }: SurfaceItemProps) {
 }
 
 /**
- * Legend card overlay for the map
- * Shows road types and surfaces with toggleable checkboxes
+ * Legend content - the actual legend items
  */
-export function LegendCard() {
+function LegendContent() {
   const { roadFilters, toggleRoadClass, toggleRoadSurface } = useFilterState();
 
   return (
-    <div className="bg-background/90 backdrop-blur-sm rounded-lg shadow-lg border p-2 w-44 text-xs">
+    <>
       {/* Road Types Section */}
       <div className="mb-2">
         <div className="font-medium text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
@@ -170,6 +171,86 @@ export function LegendCard() {
             );
           })}
         </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Legend card overlay for the map
+ * Shows road types and surfaces with toggleable checkboxes
+ *
+ * On mobile (< sm breakpoint):
+ * - Shows a collapsed "Legend" button
+ * - Clicking expands to full legend view
+ * - Clicking again or clicking outside collapses it
+ *
+ * On desktop (>= sm breakpoint):
+ * - Always shows the full legend
+ */
+export function LegendCard() {
+  const { legendExpanded, setLegendExpanded, toggleLegend } = useUIState();
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to collapse on mobile
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setLegendExpanded(false);
+      }
+    }
+
+    if (legendExpanded) {
+      // Add a slight delay to prevent immediate closure when clicking the button
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [legendExpanded, setLegendExpanded]);
+
+  return (
+    <div ref={cardRef}>
+      {/* Mobile: Collapsed button (hidden on sm and up) */}
+      <button
+        onClick={toggleLegend}
+        className={`
+          sm:hidden
+          ${legendExpanded ? 'hidden' : 'flex'}
+          items-center gap-1.5 px-3 py-2
+          bg-background/90 backdrop-blur-sm rounded-lg shadow-lg border
+          text-sm font-medium
+          hover:bg-muted/50 transition-colors
+        `}
+        aria-expanded={legendExpanded}
+        aria-label="Toggle legend"
+      >
+        <Map className="w-4 h-4" />
+        <span>Legend</span>
+      </button>
+
+      {/* Mobile: Expanded legend (shown when legendExpanded is true) */}
+      {/* Desktop: Always shown */}
+      <div
+        className={`
+          bg-background/90 backdrop-blur-sm rounded-lg shadow-lg border p-2 w-44 text-xs
+          ${legendExpanded ? 'block' : 'hidden'} sm:block
+        `}
+      >
+        {/* Mobile: Add a header with "Legend" text that can be clicked to collapse */}
+        <button
+          onClick={toggleLegend}
+          className="sm:hidden w-full flex items-center gap-1.5 px-1 py-1 mb-2 hover:bg-muted/50 rounded transition-colors"
+        >
+          <Map className="w-4 h-4" />
+          <span className="font-medium text-sm">Legend</span>
+        </button>
+
+        <LegendContent />
       </div>
     </div>
   );

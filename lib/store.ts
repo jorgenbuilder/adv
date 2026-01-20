@@ -61,10 +61,13 @@ interface FilterState {
 interface UIState {
   filterPanelOpen: boolean;
   waypointPanelOpen: boolean;
+  legendExpanded: boolean;
   setFilterPanelOpen: (open: boolean) => void;
   setWaypointPanelOpen: (open: boolean) => void;
+  setLegendExpanded: (expanded: boolean) => void;
   toggleFilterPanel: () => void;
   toggleWaypointPanel: () => void;
+  toggleLegend: () => void;
 }
 
 /**
@@ -252,10 +255,13 @@ export const useAppStore = create<AppState>()(
       // UI state
       filterPanelOpen: false,
       waypointPanelOpen: true,
+      legendExpanded: false,
       setFilterPanelOpen: (open) =>
         set({ filterPanelOpen: open }, undefined, 'setFilterPanelOpen'),
       setWaypointPanelOpen: (open) =>
         set({ waypointPanelOpen: open }, undefined, 'setWaypointPanelOpen'),
+      setLegendExpanded: (expanded) =>
+        set({ legendExpanded: expanded }, undefined, 'setLegendExpanded'),
       toggleFilterPanel: () =>
         set(
           (state) => ({ filterPanelOpen: !state.filterPanelOpen }),
@@ -267,6 +273,12 @@ export const useAppStore = create<AppState>()(
           (state) => ({ waypointPanelOpen: !state.waypointPanelOpen }),
           undefined,
           'toggleWaypointPanel'
+        ),
+      toggleLegend: () =>
+        set(
+          (state) => ({ legendExpanded: !state.legendExpanded }),
+          undefined,
+          'toggleLegend'
         ),
     }),
     { name: 'AdventureMapStore' }
@@ -322,9 +334,12 @@ export const useUIState = () =>
     useShallow((state) => ({
       filterPanelOpen: state.filterPanelOpen,
       waypointPanelOpen: state.waypointPanelOpen,
+      legendExpanded: state.legendExpanded,
       setFilterPanelOpen: state.setFilterPanelOpen,
       setWaypointPanelOpen: state.setWaypointPanelOpen,
+      setLegendExpanded: state.setLegendExpanded,
       toggleFilterPanel: state.toggleFilterPanel,
       toggleWaypointPanel: state.toggleWaypointPanel,
+      toggleLegend: state.toggleLegend,
     }))
   );
