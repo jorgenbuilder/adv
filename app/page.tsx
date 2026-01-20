@@ -2,6 +2,7 @@
 
 import { Map } from '@/components/map';
 import { WaypointList } from '@/components/WaypointList';
+import { ShareButton } from '@/components/ShareButton';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -26,6 +27,11 @@ export default function Home() {
         {/* Desktop: Sidebar waypoint panel */}
         <div className="hidden md:block absolute top-4 left-4 w-80 max-h-[calc(100vh-6rem)] overflow-auto bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border">
           <WaypointList />
+        </div>
+
+        {/* Share button overlay - bottom left */}
+        <div className="absolute bottom-4 left-4 z-10 md:bottom-6 md:left-6 safe-area-bottom safe-area-left">
+          <ShareButton />
         </div>
 
         {/* Mobile: Floating action buttons */}
