@@ -34,10 +34,11 @@ interface MapState {
 interface RouteState {
   waypoints: Waypoint[];
   calculatedRoute: Route | null;
-  addWaypoint: (position: LatLng, type?: WaypointType) => void;
-  insertWaypoint: (position: LatLng, afterIndex: number, type?: WaypointType) => void;
+  addWaypoint: (position: LatLng, type?: WaypointType, label?: string) => void;
+  insertWaypoint: (position: LatLng, afterIndex: number, type?: WaypointType, label?: string) => void;
   removeWaypoint: (id: string) => void;
-  updateWaypoint: (id: string, position: LatLng) => void;
+  updateWaypoint: (id: string, position: LatLng, label?: string) => void;
+  setWaypointLabel: (id: string, label: string) => void;
   reorderWaypoints: (fromIndex: number, toIndex: number) => void;
   clearRoute: () => void;
   setCalculatedRoute: (route: Route | null) => void;
@@ -136,7 +137,7 @@ export const useAppStore = create<AppState>()(
       // Route state
       waypoints: [],
       calculatedRoute: null,
-      addWaypoint: (position, type = 'primary') =>
+      addWaypoint: (position, type = 'primary', label) =>
         set(
           (state) => ({
             waypoints: [
@@ -146,13 +147,14 @@ export const useAppStore = create<AppState>()(
                 position,
                 snappedPosition: null, // Will be set by road snapping
                 type,
+                ...(label && { label }),
               },
             ],
           }),
           undefined,
           'addWaypoint'
         ),
-      insertWaypoint: (position, afterIndex, type = 'anchor') =>
+      insertWaypoint: (position, afterIndex, type = 'anchor', label) =>
         set(
           (state) => {
             const waypoints = [...state.waypoints];
@@ -161,6 +163,7 @@ export const useAppStore = create<AppState>()(
               position,
               snappedPosition: null,
               type,
+              ...(label && { label }),
             };
             // Insert after the specified index
             waypoints.splice(afterIndex + 1, 0, newWaypoint);
@@ -177,15 +180,27 @@ export const useAppStore = create<AppState>()(
           undefined,
           'removeWaypoint'
         ),
-      updateWaypoint: (id, position) =>
+      updateWaypoint: (id, position, label) =>
         set(
           (state) => ({
             waypoints: state.waypoints.map((wp) =>
-              wp.id === id ? { ...wp, position, snappedPosition: null } : wp
+              wp.id === id
+                ? { ...wp, position, snappedPosition: null, ...(label !== undefined && { label }) }
+                : wp
             ),
           }),
           undefined,
           'updateWaypoint'
+        ),
+      setWaypointLabel: (id, label) =>
+        set(
+          (state) => ({
+            waypoints: state.waypoints.map((wp) =>
+              wp.id === id ? { ...wp, label } : wp
+            ),
+          }),
+          undefined,
+          'setWaypointLabel'
         ),
       reorderWaypoints: (fromIndex, toIndex) =>
         set(
@@ -373,6 +388,7 @@ export const useRouteState = () =>
       insertWaypoint: state.insertWaypoint,
       removeWaypoint: state.removeWaypoint,
       updateWaypoint: state.updateWaypoint,
+      setWaypointLabel: state.setWaypointLabel,
       reorderWaypoints: state.reorderWaypoints,
       clearRoute: state.clearRoute,
       setCalculatedRoute: state.setCalculatedRoute,

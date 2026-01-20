@@ -41,6 +41,7 @@ interface GraphEdge {
   roadSegmentId: string;
   weight: number; // Distance in meters
   roadClass: RoadClass; // Road classification for travel time calculation
+  roadName?: string; // Name of the road (if available)
 }
 
 interface Graph {
@@ -163,6 +164,7 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
     const feature = geojson.features[i];
     const properties = feature.properties || {};
     const roadClass = normalizeRoadClass(properties.RD_CLASS);
+    const roadName = properties.NAME_FULL || undefined;
 
     // Handle both LineString and MultiLineString geometries
     let coordArrays: number[][][];
@@ -190,12 +192,13 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
       const length = lineStringLength(coords);
       const segmentId = `s${segmentCounter++}`;
 
-      // Add bidirectional edges with road class
+      // Add bidirectional edges with road class and name
       nodes[startNodeId].edges.push({
         targetNodeId: endNodeId,
         roadSegmentId: segmentId,
         weight: length,
         roadClass,
+        ...(roadName && { roadName }),
       });
 
       nodes[endNodeId].edges.push({
@@ -203,6 +206,7 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
         roadSegmentId: segmentId,
         weight: length,
         roadClass,
+        ...(roadName && { roadName }),
       });
 
       edgeCount += 2;

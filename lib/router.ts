@@ -515,3 +515,67 @@ export async function snapToRoad(position: LatLng): Promise<LatLng> {
 
   return nearestNode.position;
 }
+
+/**
+ * Find the name of the nearest road to a given position
+ * Returns the road name if found within a reasonable distance, otherwise null
+ */
+export async function findNearestRoadName(position: LatLng): Promise<string | null> {
+  const graph = await loadGraph();
+  if (!graph) {
+    return null;
+  }
+
+  const nearestNode = findNearestNode(graph, position);
+  if (!nearestNode) {
+    return null;
+  }
+
+  // Only consider roads within reasonable distance (500m)
+  const distance = haversineDistance(position, nearestNode.position);
+  if (distance > 500) {
+    return null;
+  }
+
+  // Look through the edges of the nearest node to find road names
+  // Prioritize edges that are closer to the waypoint position
+  const edgesWithNames = nearestNode.edges
+    .filter(edge => edge.roadName)
+    .map(edge => {
+      const targetNode = graph.nodes[edge.targetNodeId];
+      if (!targetNode) return null;
+      // Calculate how close the midpoint of this edge is to the waypoint
+      const midpoint = {
+        lat: (nearestNode.position.lat + targetNode.position.lat) / 2,
+        lng: (nearestNode.position.lng + targetNode.position.lng) / 2,
+      };
+      return {
+        name: edge.roadName!,
+        distance: haversineDistance(position, midpoint),
+        roadClass: edge.roadClass,
+      };
+    })
+    .filter((e): e is NonNullable<typeof e> => e !== null)
+    .sort((a, b) => {
+      // Prioritize named roads, then by distance
+      // Give preference to major roads (highway, arterial, collector)
+      const classOrder: Record<RoadClass, number> = {
+        highway: 0,
+        arterial: 1,
+        collector: 2,
+        resource: 3,
+        local: 4,
+        decommissioned: 5,
+      };
+      const classA = classOrder[a.roadClass];
+      const classB = classOrder[b.roadClass];
+      if (classA !== classB) return classA - classB;
+      return a.distance - b.distance;
+    });
+
+  if (edgesWithNames.length > 0) {
+    return edgesWithNames[0].name;
+  }
+
+  return null;
+}

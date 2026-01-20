@@ -14,6 +14,8 @@ import { MAPTILER_KEY } from '@/lib/constants';
 import { RoadLayer } from './RoadLayer';
 import { RouteLayer } from './RouteLayer';
 import { LegendCard } from './LegendCard';
+import { useWaypointNaming } from '@/lib/use-waypoint-naming';
+import { findNearestRoadName } from '@/lib/router';
 import type { Waypoint, LatLng } from '@/types';
 
 /**
@@ -43,8 +45,11 @@ export function Map() {
   const [selectedWaypoint, setSelectedWaypoint] = useState<string | null>(null);
 
   const { center, zoom, pitch, bearing, setView } = useMapState();
-  const { waypoints, addWaypoint, removeWaypoint, updateWaypoint } =
+  const { waypoints, addWaypoint, removeWaypoint, updateWaypoint, setWaypointLabel } =
     useRouteState();
+
+  // Automatically name waypoints based on nearby road names
+  useWaypointNaming();
 
   // Handle view state changes (pan, zoom, etc.)
   const handleMove = useCallback(
@@ -105,12 +110,21 @@ export function Map() {
     [addWaypoint, selectedWaypoint]
   );
 
-  // Handle marker drag end
+  // Handle marker drag end - update position and find new road name
   const handleMarkerDragEnd = useCallback(
-    (waypointId: string, lng: number, lat: number) => {
+    async (waypointId: string, lng: number, lat: number) => {
       updateWaypoint(waypointId, { lat, lng });
+      // Find and set the road name for the new position
+      try {
+        const roadName = await findNearestRoadName({ lat, lng });
+        if (roadName) {
+          setWaypointLabel(waypointId, roadName);
+        }
+      } catch (error) {
+        console.warn('Failed to find road name after drag:', error);
+      }
     },
-    [updateWaypoint]
+    [updateWaypoint, setWaypointLabel]
   );
 
   // Handle marker click (select/delete)
@@ -302,10 +316,12 @@ function WaypointMarkerComponent({
                 ${isSelected ? 'border-t-red-500' : 'border-t-blue-500'}
               `}
             />
-            {/* Delete hint when selected */}
-            {isSelected && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow">
-                Click again to delete
+            {/* Waypoint name tooltip on hover or select */}
+            {(isHovered || isSelected) && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow max-w-48 truncate">
+                {isSelected
+                  ? 'Click again to delete'
+                  : waypoint.label || `Waypoint ${displayNumber}`}
               </div>
             )}
           </>

@@ -119,4 +119,5 @@ export interface GraphEdge {
   roadSegmentId: string;
   weight: number; // Distance in meters
   roadClass: RoadClass; // Road classification for travel time calculation
+  roadName?: string; // Name of the road (if available)
 }
