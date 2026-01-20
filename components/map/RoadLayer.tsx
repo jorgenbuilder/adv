@@ -161,7 +161,7 @@ export function RoadLayer() {
       // Use match expression for better type compatibility
       const classFilter: FilterSpecification = [
         'match',
-        ['downcase', ['get', 'ROAD_CLASS']] as ExpressionSpecification,
+        ['downcase', ['get', 'RD_CLASS']] as ExpressionSpecification,
         draClasses,
         true,
         false,
@@ -181,13 +181,13 @@ export function RoadLayer() {
           'line-color': [
             'case',
             // Overgrown - use base color with reduced opacity
-            ['==', ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']], 'overgrown'],
+            ['==', ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']], 'overgrown'],
             style.color,
             // Rough - darken by 20%
-            ['==', ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']], 'rough'],
+            ['==', ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']], 'rough'],
             adjustColor(style.color, -0.2),
             // Loose - lighten by 20%
-            ['==', ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']], 'loose'],
+            ['==', ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']], 'loose'],
             adjustColor(style.color, 0.2),
             // Default (paved) - base color
             style.color,
@@ -205,8 +205,8 @@ export function RoadLayer() {
             'case',
             // Overgrown or decommissioned surface - 50% opacity
             ['any',
-              ['==', ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']], 'overgrown'],
-              ['==', ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']], 'decommissioned'],
+              ['==', ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']], 'overgrown'],
+              ['==', ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']], 'decommissioned'],
             ],
             0.5,
             // Default - full opacity
@@ -332,7 +332,7 @@ export function RoadLayer() {
           // Match road class
           [
             'match',
-            ['downcase', ['get', 'ROAD_CLASS']] as ExpressionSpecification,
+            ['downcase', ['get', 'RD_CLASS']] as ExpressionSpecification,
             draClasses,
             true,
             false,
@@ -340,7 +340,7 @@ export function RoadLayer() {
           // Match road surface
           [
             'match',
-            ['downcase', ['coalesce', ['get', 'ROAD_SURFACE'], 'paved']] as ExpressionSpecification,
+            ['downcase', ['coalesce', ['get', 'RD_SURFACE'], 'paved']] as ExpressionSpecification,
             enabledSurfaces,
             true,
             false,

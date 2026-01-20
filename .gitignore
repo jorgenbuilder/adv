@@ -23,6 +23,10 @@
 # data directory (large geodata files)
 /data
 
+# large generated data files (host on CDN for production)
+/public/vi-roads.pmtiles
+/public/vi-graph.json
+
 # misc
 .DS_Store
 *.pem

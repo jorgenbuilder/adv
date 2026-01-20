@@ -100,16 +100,25 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
   const endpointCounts: Map<string, number> = new Map();
 
   for (const feature of geojson.features) {
-    if (feature.geometry.type !== 'LineString') continue;
+    // Handle both LineString and MultiLineString geometries
+    let coordArrays: number[][][];
+    if (feature.geometry.type === 'LineString') {
+      coordArrays = [feature.geometry.coordinates as number[][]];
+    } else if (feature.geometry.type === 'MultiLineString') {
+      coordArrays = feature.geometry.coordinates as number[][][];
+    } else {
+      continue;
+    }
 
-    const coords = feature.geometry.coordinates;
-    if (coords.length < 2) continue;
+    for (const coords of coordArrays) {
+      if (coords.length < 2) continue;
 
-    const startKey = coordKey(coords[0][0], coords[0][1]);
-    const endKey = coordKey(coords[coords.length - 1][0], coords[coords.length - 1][1]);
+      const startKey = coordKey(coords[0][0], coords[0][1]);
+      const endKey = coordKey(coords[coords.length - 1][0], coords[coords.length - 1][1]);
 
-    endpointCounts.set(startKey, (endpointCounts.get(startKey) || 0) + 1);
-    endpointCounts.set(endKey, (endpointCounts.get(endKey) || 0) + 1);
+      endpointCounts.set(startKey, (endpointCounts.get(startKey) || 0) + 1);
+      endpointCounts.set(endKey, (endpointCounts.get(endKey) || 0) + 1);
+    }
   }
 
   // Second pass: create nodes at intersections (endpoints appearing more than once)
@@ -132,41 +141,52 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
 
   // Third pass: create edges between nodes
   let edgeCount = 0;
+  let segmentCounter = 0;
 
   for (let i = 0; i < geojson.features.length; i++) {
     const feature = geojson.features[i];
-    if (feature.geometry.type !== 'LineString') continue;
 
-    const coords = feature.geometry.coordinates;
-    if (coords.length < 2) continue;
+    // Handle both LineString and MultiLineString geometries
+    let coordArrays: number[][][];
+    if (feature.geometry.type === 'LineString') {
+      coordArrays = [feature.geometry.coordinates as number[][]];
+    } else if (feature.geometry.type === 'MultiLineString') {
+      coordArrays = feature.geometry.coordinates as number[][][];
+    } else {
+      continue;
+    }
 
-    const startKey = coordKey(coords[0][0], coords[0][1]);
-    const endKey = coordKey(coords[coords.length - 1][0], coords[coords.length - 1][1]);
+    for (const coords of coordArrays) {
+      if (coords.length < 2) continue;
 
-    const startNodeId = coordToNode.get(startKey);
-    const endNodeId = coordToNode.get(endKey);
+      const startKey = coordKey(coords[0][0], coords[0][1]);
+      const endKey = coordKey(coords[coords.length - 1][0], coords[coords.length - 1][1]);
 
-    if (!startNodeId || !endNodeId) continue;
-    if (startNodeId === endNodeId) continue; // Skip loops
+      const startNodeId = coordToNode.get(startKey);
+      const endNodeId = coordToNode.get(endKey);
 
-    // Calculate segment length
-    const length = lineStringLength(coords);
-    const segmentId = `s${i}`;
+      if (!startNodeId || !endNodeId) continue;
+      if (startNodeId === endNodeId) continue; // Skip loops
 
-    // Add bidirectional edges
-    nodes[startNodeId].edges.push({
-      targetNodeId: endNodeId,
-      roadSegmentId: segmentId,
-      weight: length,
-    });
+      // Calculate segment length
+      const length = lineStringLength(coords);
+      const segmentId = `s${segmentCounter++}`;
 
-    nodes[endNodeId].edges.push({
-      targetNodeId: startNodeId,
-      roadSegmentId: segmentId,
-      weight: length,
-    });
+      // Add bidirectional edges
+      nodes[startNodeId].edges.push({
+        targetNodeId: endNodeId,
+        roadSegmentId: segmentId,
+        weight: length,
+      });
 
-    edgeCount += 2;
+      nodes[endNodeId].edges.push({
+        targetNodeId: startNodeId,
+        roadSegmentId: segmentId,
+        weight: length,
+      });
+
+      edgeCount += 2;
+    }
   }
 
   console.log(`Created ${edgeCount} edges`);
