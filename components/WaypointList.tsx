@@ -358,21 +358,25 @@ export function WaypointList() {
       <div className="mt-4 pt-4 border-t space-y-3">
         {/* Total distance and time */}
         <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Total distance</span>
-          <span className="font-semibold">
-            {calculatedRoute ? formatDistance(calculatedRoute.distance) : waypoints.length > 1 ? 'Calculating...' : '--'}
+          <span className="text-sm text-muted-foreground">Total</span>
+          <span className="font-semibold flex items-center gap-2">
+            {calculatedRoute ? (
+              <>
+                {formatDistance(calculatedRoute.distance)}
+                {calculatedRoute.travelTime !== undefined && calculatedRoute.travelTime > 0 && (
+                  <span className="flex items-center gap-1 text-muted-foreground font-normal">
+                    <Clock className="w-4 h-4" />
+                    {formatTravelTime(calculatedRoute.travelTime)}
+                  </span>
+                )}
+              </>
+            ) : waypoints.length > 1 ? (
+              'Calculating...'
+            ) : (
+              '--'
+            )}
           </span>
         </div>
-
-        {calculatedRoute?.travelTime && (
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              Est. travel time
-            </span>
-            <span className="font-semibold">{formatTravelTime(calculatedRoute.travelTime)}</span>
-          </div>
-        )}
 
         {/* Total breakdown by road class */}
         {calculatedRoute?.distanceByRoadClass && calculatedRoute?.travelTimeByRoadClass && (
