@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
-import { useRouteState } from '@/lib/store';
+import { useRouteState, usePreferenceState } from '@/lib/store';
 import { calculateRoute, haversineDistance } from '@/lib/router';
 import type { LatLng } from '@/types';
 
@@ -29,6 +29,7 @@ interface RouteSegment {
 export function RouteLayer() {
   const { current: map } = useMap();
   const { waypoints, insertWaypoint, setCalculatedRoute } = useRouteState();
+  const { roadPreferences } = usePreferenceState();
   const [routePath, setRoutePath] = useState<LatLng[]>([]);
   const segmentsRef = useRef<RouteSegment[]>([]);
   const sourceAddedRef = useRef(false);
@@ -235,7 +236,8 @@ export function RouteLayer() {
       );
 
       // Calculate the full route at once to get leg data
-      const routeResult = await calculateRoute(positions);
+      // Pass preferences to bias toward preferred road types
+      const routeResult = await calculateRoute(positions, roadPreferences);
 
       if (cancelled) return;
 
@@ -310,7 +312,7 @@ export function RouteLayer() {
     return () => {
       cancelled = true;
     };
-  }, [waypoints, setCalculatedRoute]);
+  }, [waypoints, roadPreferences, setCalculatedRoute]);
 
   // Update the map source when route changes
   useEffect(() => {

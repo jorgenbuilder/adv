@@ -9,6 +9,7 @@ import type {
   RoadFilters,
   RoadClass,
   RoadSurface,
+  RoadPreferences,
 } from '@/types';
 import { DEFAULT_MAP_CENTER, DEFAULT_ZOOM } from './constants';
 
@@ -56,6 +57,17 @@ interface FilterState {
 }
 
 /**
+ * Preference state slice for pathfinding preferences
+ */
+interface PreferenceState {
+  roadPreferences: RoadPreferences;
+  toggleTypePreference: (roadClass: RoadClass) => void;
+  toggleSurfacePreference: (surface: RoadSurface) => void;
+  setRoadPreferences: (prefs: RoadPreferences) => void;
+  resetPreferences: () => void;
+}
+
+/**
  * UI state slice
  */
 interface UIState {
@@ -73,7 +85,7 @@ interface UIState {
 /**
  * Combined store type
  */
-export type AppState = MapState & RouteState & FilterState & UIState;
+export type AppState = MapState & RouteState & FilterState & PreferenceState & UIState;
 
 // Generate unique ID for waypoints
 let waypointIdCounter = 0;
@@ -96,6 +108,12 @@ const defaultRoadFilters: RoadFilters = {
     overgrown: true,
     decommissioned: true,
   },
+};
+
+// Default road preferences for pathfinding
+const defaultRoadPreferences: RoadPreferences = {
+  types: ['resource'],  // Default: prefer FSR/resource roads
+  surfaces: ['loose'],  // Default: prefer gravel/loose surfaces
 };
 
 /**
@@ -252,6 +270,51 @@ export const useAppStore = create<AppState>()(
       resetFilters: () =>
         set({ roadFilters: defaultRoadFilters }, undefined, 'resetFilters'),
 
+      // Preference state
+      roadPreferences: defaultRoadPreferences,
+      toggleTypePreference: (roadClass) =>
+        set(
+          (state) => {
+            const types = [...state.roadPreferences.types];
+            const index = types.indexOf(roadClass);
+            if (index >= 0) {
+              // Remove if already in list
+              types.splice(index, 1);
+            } else {
+              // Add to end of list
+              types.push(roadClass);
+            }
+            return {
+              roadPreferences: { ...state.roadPreferences, types },
+            };
+          },
+          undefined,
+          'toggleTypePreference'
+        ),
+      toggleSurfacePreference: (surface) =>
+        set(
+          (state) => {
+            const surfaces = [...state.roadPreferences.surfaces];
+            const index = surfaces.indexOf(surface);
+            if (index >= 0) {
+              // Remove if already in list
+              surfaces.splice(index, 1);
+            } else {
+              // Add to end of list
+              surfaces.push(surface);
+            }
+            return {
+              roadPreferences: { ...state.roadPreferences, surfaces },
+            };
+          },
+          undefined,
+          'toggleSurfacePreference'
+        ),
+      setRoadPreferences: (prefs) =>
+        set({ roadPreferences: prefs }, undefined, 'setRoadPreferences'),
+      resetPreferences: () =>
+        set({ roadPreferences: defaultRoadPreferences }, undefined, 'resetPreferences'),
+
       // UI state
       filterPanelOpen: false,
       waypointPanelOpen: true,
@@ -341,5 +404,16 @@ export const useUIState = () =>
       toggleFilterPanel: state.toggleFilterPanel,
       toggleWaypointPanel: state.toggleWaypointPanel,
       toggleLegend: state.toggleLegend,
+    }))
+  );
+
+export const usePreferenceState = () =>
+  useAppStore(
+    useShallow((state) => ({
+      roadPreferences: state.roadPreferences,
+      toggleTypePreference: state.toggleTypePreference,
+      toggleSurfacePreference: state.toggleSurfacePreference,
+      setRoadPreferences: state.setRoadPreferences,
+      resetPreferences: state.resetPreferences,
     }))
   );

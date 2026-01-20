@@ -8,6 +8,7 @@ import { Trash2, GripVertical, MapPin, Diamond, ChevronDown, ChevronUp, Clock } 
 import type { Waypoint, RoadClass, RoadClassDistances, RoadClassTravelTimes, RouteLeg } from '@/types';
 import { ROAD_SPEEDS } from '@/lib/router';
 import { ROAD_CLASS_STYLES } from '@/lib/constants';
+import { RoadPreferenceControl } from '@/components/RoadPreferenceControl';
 
 /**
  * Road class display names and colors
@@ -352,6 +353,11 @@ export function WaypointList() {
             />
           );
         })}
+      </div>
+
+      {/* Road preferences */}
+      <div className="mt-4 pt-4 border-t">
+        <RoadPreferenceControl />
       </div>
 
       {/* Route summary */}

@@ -24,11 +24,13 @@ export function useURLSync() {
   const pitch = useAppStore((s) => s.pitch);
   const bearing = useAppStore((s) => s.bearing);
   const roadFilters = useAppStore((s) => s.roadFilters);
+  const roadPreferences = useAppStore((s) => s.roadPreferences);
 
   // Get actions from store
   const addWaypoint = useAppStore((s) => s.addWaypoint);
   const setView = useAppStore((s) => s.setView);
   const setRoadFilters = useAppStore((s) => s.setRoadFilters);
+  const setRoadPreferences = useAppStore((s) => s.setRoadPreferences);
 
   // Restore state from URL on mount
   useEffect(() => {
@@ -68,7 +70,12 @@ export function useURLSync() {
     if (urlState.filters) {
       setRoadFilters(urlState.filters);
     }
-  }, [addWaypoint, setView, setRoadFilters]);
+
+    // Restore preferences
+    if (urlState.preferences) {
+      setRoadPreferences(urlState.preferences);
+    }
+  }, [addWaypoint, setView, setRoadFilters, setRoadPreferences]);
 
   // Update URL when state changes (debounced)
   useEffect(() => {
@@ -93,6 +100,7 @@ export function useURLSync() {
         pitch,
         bearing,
         filters: roadFilters,
+        preferences: roadPreferences,
       });
     }, DEBOUNCE_DELAY);
 
@@ -102,7 +110,7 @@ export function useURLSync() {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [waypoints, center, zoom, pitch, bearing, roadFilters]);
+  }, [waypoints, center, zoom, pitch, bearing, roadFilters, roadPreferences]);
 }
 
 /**

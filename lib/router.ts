@@ -12,6 +12,7 @@ import type {
   RoadClassDistances,
   RoadClassTravelTimes,
   RouteLeg,
+  RoadPreferences,
 } from '@/types';
 import { ASSET_PATHS } from './constants';
 
@@ -156,6 +157,41 @@ export function findNearestNode(
 }
 
 /**
+ * Calculate preference weight modifier for an edge
+ *
+ * Lower values = more preferred.
+ * - If road class is in preferences, multiply by (0.5 + 0.1 * rank)
+ *   So rank 1 = 0.6x, rank 2 = 0.7x, etc.
+ * - If not in preferences but has entries, multiply by 1.5x
+ * - If preferences are empty, no modification (1.0x)
+ */
+function getPreferenceWeight(
+  edge: GraphEdge,
+  preferences?: RoadPreferences
+): number {
+  if (!preferences) {
+    return 1.0;
+  }
+
+  const roadClass = edge.roadClass || 'local';
+  let modifier = 1.0;
+
+  // Apply type preferences
+  if (preferences.types.length > 0) {
+    const typeIndex = preferences.types.indexOf(roadClass);
+    if (typeIndex >= 0) {
+      // Preferred type: 0.5 + 0.1 * (rank - 1) = 0.5, 0.6, 0.7, ...
+      modifier *= 0.5 + 0.1 * typeIndex;
+    } else {
+      // Not preferred: penalty
+      modifier *= 1.5;
+    }
+  }
+
+  return modifier;
+}
+
+/**
  * Priority queue implementation for Dijkstra's algorithm
  */
 class PriorityQueue<T> {
@@ -177,13 +213,16 @@ class PriorityQueue<T> {
 
 /**
  * Find the shortest path between two nodes using Dijkstra's algorithm
+ * Optionally accepts road preferences to bias toward preferred road types
  */
 export function dijkstra(
   graph: RoutingGraph,
   startNodeId: string,
-  endNodeId: string
+  endNodeId: string,
+  preferences?: RoadPreferences
 ): RouteResult | null {
   const distances: Record<string, number> = {};
+  const actualDistances: Record<string, number> = {}; // Track real distances (unweighted)
   const previous: Record<string, { nodeId: string; edge: GraphEdge } | null> = {};
   const visited: Set<string> = new Set();
   const queue = new PriorityQueue<string>();
@@ -191,6 +230,7 @@ export function dijkstra(
   // Initialize distances
   for (const nodeId of Object.keys(graph.nodes)) {
     distances[nodeId] = nodeId === startNodeId ? 0 : Infinity;
+    actualDistances[nodeId] = nodeId === startNodeId ? 0 : Infinity;
     previous[nodeId] = null;
   }
 
@@ -218,10 +258,15 @@ export function dijkstra(
         continue;
       }
 
-      const newDistance = distances[currentId] + edge.weight;
+      // Apply preference weighting to the edge
+      const preferenceWeight = getPreferenceWeight(edge, preferences);
+      const weightedEdgeWeight = edge.weight * preferenceWeight;
+      const newDistance = distances[currentId] + weightedEdgeWeight;
+      const newActualDistance = actualDistances[currentId] + edge.weight;
 
       if (newDistance < distances[edge.targetNodeId]) {
         distances[edge.targetNodeId] = newDistance;
+        actualDistances[edge.targetNodeId] = newActualDistance;
         previous[edge.targetNodeId] = { nodeId: currentId, edge };
         queue.enqueue(edge.targetNodeId, newDistance);
       }
@@ -270,7 +315,7 @@ export function dijkstra(
 
   return {
     path,
-    distance: distances[endNodeId],
+    distance: actualDistances[endNodeId], // Use actual (unweighted) distance
     nodeIds,
     distanceByRoadClass,
     travelTime,
@@ -287,9 +332,11 @@ export interface ExtendedRouteResult extends RouteResult {
 
 /**
  * Calculate a route through multiple waypoints
+ * Optionally accepts road preferences to bias toward preferred road types
  */
 export async function calculateRoute(
-  waypoints: LatLng[]
+  waypoints: LatLng[],
+  preferences?: RoadPreferences
 ): Promise<ExtendedRouteResult | null> {
   if (waypoints.length < 2) {
     return null;
@@ -348,7 +395,7 @@ export async function calculateRoute(
     const startNode = waypointNodes[i]!;
     const endNode = waypointNodes[i + 1]!;
 
-    const segment = dijkstra(graph, startNode.id, endNode.id);
+    const segment = dijkstra(graph, startNode.id, endNode.id, preferences);
 
     if (!segment) {
       // No path found between these waypoints - use straight line

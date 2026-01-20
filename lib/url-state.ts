@@ -12,7 +12,7 @@
  * URL format: /?w=48.4284,-123.3656,48.5,-123.4&z=10&c=48.5,-123.4&p=45&b=0&f=2047
  */
 
-import type { LatLng, RoadFilters, RoadClass, RoadSurface } from '@/types';
+import type { LatLng, RoadFilters, RoadClass, RoadSurface, RoadPreferences } from '@/types';
 
 // Bitfield positions for road filters
 // Road classes (bits 0-5)
@@ -36,6 +36,104 @@ const ROAD_SURFACE_BITS: Record<RoadSurface, number> = {
 
 // All filters enabled = 2047 (binary: 11111111111)
 export const ALL_FILTERS_ENABLED = 2047;
+
+// Road class short codes for URL encoding
+const ROAD_CLASS_CODES: Record<RoadClass, string> = {
+  highway: 'h',
+  arterial: 'a',
+  collector: 'c',
+  local: 'l',
+  resource: 'r',
+  decommissioned: 'd',
+};
+
+const CODE_TO_ROAD_CLASS: Record<string, RoadClass> = {
+  h: 'highway',
+  a: 'arterial',
+  c: 'collector',
+  l: 'local',
+  r: 'resource',
+  d: 'decommissioned',
+};
+
+// Road surface short codes for URL encoding
+const ROAD_SURFACE_CODES: Record<RoadSurface, string> = {
+  paved: 'p',
+  loose: 'l',
+  rough: 'r',
+  overgrown: 'o',
+  decommissioned: 'd',
+};
+
+const CODE_TO_ROAD_SURFACE: Record<string, RoadSurface> = {
+  p: 'paved',
+  l: 'loose',
+  r: 'rough',
+  o: 'overgrown',
+  d: 'decommissioned',
+};
+
+/**
+ * Encode road preferences to URL string
+ * Format: "t:r,h,a;s:l,r" (types:resource,highway,arterial;surfaces:loose,rough)
+ */
+export function encodePreferences(prefs: RoadPreferences): string {
+  const typeCodes = prefs.types.map((t) => ROAD_CLASS_CODES[t]).join('');
+  const surfaceCodes = prefs.surfaces.map((s) => ROAD_SURFACE_CODES[s]).join('');
+
+  // Only include non-empty parts
+  const parts: string[] = [];
+  if (typeCodes) parts.push(`t${typeCodes}`);
+  if (surfaceCodes) parts.push(`s${surfaceCodes}`);
+
+  return parts.join('.');
+}
+
+/**
+ * Decode road preferences from URL string
+ */
+export function decodePreferences(encoded: string): RoadPreferences {
+  const prefs: RoadPreferences = { types: [], surfaces: [] };
+
+  if (!encoded) return prefs;
+
+  const parts = encoded.split('.');
+  for (const part of parts) {
+    if (part.startsWith('t')) {
+      // Type preferences
+      const codes = part.slice(1).split('');
+      prefs.types = codes
+        .map((c) => CODE_TO_ROAD_CLASS[c])
+        .filter((t): t is RoadClass => t !== undefined);
+    } else if (part.startsWith('s')) {
+      // Surface preferences
+      const codes = part.slice(1).split('');
+      prefs.surfaces = codes
+        .map((c) => CODE_TO_ROAD_SURFACE[c])
+        .filter((s): s is RoadSurface => s !== undefined);
+    }
+  }
+
+  return prefs;
+}
+
+// Default preferences for comparison
+const DEFAULT_PREFERENCES: RoadPreferences = {
+  types: ['resource'],
+  surfaces: ['loose'],
+};
+
+/**
+ * Check if preferences are equal to defaults
+ */
+function preferencesAreDefault(prefs: RoadPreferences): boolean {
+  return (
+    prefs.types.length === DEFAULT_PREFERENCES.types.length &&
+    prefs.types.every((t, i) => t === DEFAULT_PREFERENCES.types[i]) &&
+    prefs.surfaces.length === DEFAULT_PREFERENCES.surfaces.length &&
+    prefs.surfaces.every((s, i) => s === DEFAULT_PREFERENCES.surfaces[i])
+  );
+}
 
 /**
  * Encode road filters as a bitfield number
@@ -173,6 +271,7 @@ export function buildShareURL(params: {
   pitch?: number;
   bearing?: number;
   filters?: RoadFilters;
+  preferences?: RoadPreferences;
 }): string {
   const searchParams = new URLSearchParams();
 
@@ -202,6 +301,14 @@ export function buildShareURL(params: {
     }
   }
 
+  // Add preferences (only if not default)
+  if (params.preferences && !preferencesAreDefault(params.preferences)) {
+    const prefsStr = encodePreferences(params.preferences);
+    if (prefsStr) {
+      searchParams.set('pref', prefsStr);
+    }
+  }
+
   // Build URL
   const baseURL = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
   return `${baseURL}?${searchParams.toString()}`;
@@ -217,6 +324,7 @@ export function parseStateFromURL(): {
   pitch: number | null;
   bearing: number | null;
   filters: RoadFilters | null;
+  preferences: RoadPreferences | null;
 } {
   if (typeof window === 'undefined') {
     return {
@@ -226,6 +334,7 @@ export function parseStateFromURL(): {
       pitch: null,
       bearing: null,
       filters: null,
+      preferences: null,
     };
   }
 
@@ -240,6 +349,12 @@ export function parseStateFromURL(): {
     }
   }
 
+  // Parse preferences from URL
+  let preferences: RoadPreferences | null = null;
+  if (params.has('pref')) {
+    preferences = decodePreferences(params.get('pref') || '');
+  }
+
   return {
     waypoints: parseWaypointsFromURL(params.get('w')),
     center: parseCenterFromURL(params.get('c')),
@@ -247,6 +362,7 @@ export function parseStateFromURL(): {
     pitch: params.has('p') ? parseNumberFromURL(params.get('p'), 0) : null,
     bearing: params.has('b') ? parseNumberFromURL(params.get('b'), 0) : null,
     filters,
+    preferences,
   };
 }
 
@@ -260,6 +376,7 @@ export function updateURL(params: {
   pitch?: number;
   bearing?: number;
   filters?: RoadFilters;
+  preferences?: RoadPreferences;
 }): void {
   if (typeof window === 'undefined') return;
 

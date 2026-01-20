@@ -100,6 +100,12 @@ export interface URLState {
   filters: number; // Bitfield encoding of filters
 }
 
+// Road preferences for pathfinding (ranked arrays)
+export interface RoadPreferences {
+  types: RoadClass[]; // Ordered preference list for road types
+  surfaces: RoadSurface[]; // Ordered preference list for road surfaces
+}
+
 // Routing graph node
 export interface GraphNode {
   id: string;
