@@ -20,13 +20,14 @@ export const DEFAULT_ZOOM = 8;
 export const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY || '';
 
 // Road styling by classification
+// Each road type has a distinct color, width, and dash pattern for clear visual differentiation
 export const ROAD_CLASS_STYLES = {
-  highway: { color: '#ff6b35', width: 4, dash: 'solid' },
-  arterial: { color: '#f7c59f', width: 3, dash: 'solid' },
-  collector: { color: '#efefef', width: 2, dash: 'solid' },
-  local: { color: '#a0a0a0', width: 1.5, dash: 'solid' },
-  resource: { color: '#8b4513', width: 2, dash: 'dashed' },
-  decommissioned: { color: '#666666', width: 1, dash: 'dotted' },
+  highway: { color: '#e63946', width: 4, dash: 'solid' },      // Red - major roads
+  arterial: { color: '#457b9d', width: 3, dash: 'solid' },     // Blue - arterial roads
+  collector: { color: '#2a9d8f', width: 2.5, dash: 'solid' },  // Teal - collector roads
+  local: { color: '#e9c46a', width: 2, dash: 'solid' },        // Gold - local roads
+  resource: { color: '#8b4513', width: 2, dash: 'dashed' },    // Brown dashed - resource roads
+  decommissioned: { color: '#6c757d', width: 1.5, dash: 'dotted' }, // Gray dotted - decommissioned
 } as const;
 
 // Road surface style modifiers
