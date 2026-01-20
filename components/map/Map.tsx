@@ -2,7 +2,6 @@
 
 import { useCallback, useRef, useState } from 'react';
 import MapGL, {
-  ScaleControl,
   Marker,
   MapRef,
   ViewStateChangeEvent,
@@ -26,7 +25,6 @@ const SATELLITE_STYLE = `https://api.maptiler.com/maps/hybrid/style.json?key=${M
  * Features:
  * - Satellite imagery from MapTiler
  * - 3D terrain with setTerrain() API
- * - Scale bar
  * - Click to add waypoints
  * - Legend in top right corner
  */
@@ -156,9 +154,6 @@ export function Map() {
         style={{ width: '100%', height: '100%' }}
         cursor={mapLoaded ? 'crosshair' : 'wait'}
       >
-        {/* Scale bar */}
-        <ScaleControl position="bottom-right" maxWidth={100} unit="metric" />
-
         {/* Road overlay from PMTiles */}
         <RoadLayer />
 
