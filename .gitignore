@@ -23,6 +23,10 @@
 # data directory (large geodata files)
 /data
 
+# Large static assets (hosted on Cloudflare R2)
+/public/vi-graph.json
+/public/vi-roads.pmtiles
+
 
 # misc
 .DS_Store
@@ -39,6 +43,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# wrangler cache
+.wrangler/
 
 # typescript
 *.tsbuildinfo

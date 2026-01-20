@@ -48,7 +48,18 @@ export const URL_PARAMS = {
 } as const;
 
 // File paths for static assets
+// Support both local and R2-hosted assets via environment variables
+const USE_LOCAL_ASSETS = process.env.NEXT_PUBLIC_USE_LOCAL_ASSETS === 'true';
+const R2_BASE_URL = process.env.NEXT_PUBLIC_R2_BASE_URL || '';
+
+function getAssetPath(filename: string): string {
+  if (USE_LOCAL_ASSETS || !R2_BASE_URL) {
+    return `/${filename}`;
+  }
+  return `${R2_BASE_URL}/${filename}`;
+}
+
 export const ASSET_PATHS = {
-  roadTiles: '/vi-roads.pmtiles',
-  routingGraph: '/vi-graph.json',
+  roadTiles: getAssetPath('vi-roads.pmtiles'),
+  routingGraph: getAssetPath('vi-graph.json'),
 } as const;

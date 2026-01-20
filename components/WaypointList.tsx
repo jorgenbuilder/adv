@@ -175,36 +175,56 @@ function WaypointCard({
   // Get cumulative stats for this waypoint
   const cumulativeStats = legs ? getCumulativeStats(legs, index) : null;
 
+  // Minimal anchor UI - single line layout
+  if (isAnchor) {
+    return (
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-accent/50 rounded cursor-move"
+      >
+        <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0 touch-manipulation" />
+        <Diamond className="w-3 h-3 text-blue-500 flex-shrink-0" />
+        <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+          {waypoint.label || `Anchor ${formatCoords()}`}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onRemove}
+          className="flex-shrink-0 h-5 w-5 text-muted-foreground hover:text-destructive active:text-destructive touch-manipulation"
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  // Regular waypoint Card layout with compact sizing
   return (
     <Card
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`cursor-move hover:border-primary/50 transition-colors ${
-        isAnchor ? 'opacity-80' : ''
-      }`}
+      className="cursor-move hover:border-primary/50 transition-colors"
     >
-      <CardContent className="p-3 md:p-3 py-4 md:py-3">
-        <div className="flex items-center gap-3 md:gap-2">
+      <CardContent className="p-2">
+        <div className="flex items-center gap-2">
           {/* Drag handle */}
-          <GripVertical className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0 touch-manipulation" />
+          <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0 touch-manipulation" />
 
-          {/* Waypoint indicator */}
-          {isAnchor ? (
-            <div className="w-8 h-8 md:w-6 md:h-6 flex items-center justify-center flex-shrink-0">
-              <Diamond className="w-5 h-5 md:w-4 md:h-4 text-blue-500" />
-            </div>
-          ) : (
-            <div className="w-8 h-8 md:w-6 md:h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm md:text-xs font-bold flex-shrink-0">
-              {displayNumber}
-            </div>
-          )}
+          {/* Waypoint number */}
+          <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+            {displayNumber}
+          </div>
 
           {/* Waypoint info */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {waypoint.label || (isAnchor ? 'Anchor point' : `Waypoint ${displayNumber}`)}
+              {waypoint.label || `Waypoint ${displayNumber}`}
             </p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground truncate">{formatCoords()}</p>
@@ -226,7 +246,7 @@ function WaypointCard({
               variant="ghost"
               size="icon"
               onClick={() => setExpanded(!expanded)}
-              className="flex-shrink-0 h-8 w-8 text-muted-foreground"
+              className="flex-shrink-0 h-7 w-7 text-muted-foreground"
             >
               {expanded ? (
                 <ChevronUp className="w-4 h-4" />
@@ -241,23 +261,23 @@ function WaypointCard({
             variant="ghost"
             size="icon"
             onClick={onRemove}
-            className="flex-shrink-0 h-10 w-10 md:h-8 md:w-8 text-muted-foreground hover:text-destructive active:text-destructive touch-manipulation"
+            className="flex-shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive active:text-destructive touch-manipulation"
           >
-            <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Expanded details */}
         {expanded && cumulativeStats && (
-          <div className="mt-3 pt-3 border-t">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
+          <div className="mt-2 pt-2 border-t">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">
               Distance by road type to this point:
             </p>
             <RoadClassBreakdown
               distanceByRoadClass={cumulativeStats.distanceByRoadClass}
               travelTimeByRoadClass={cumulativeStats.travelTimeByRoadClass}
             />
-            <div className="mt-2 pt-2 border-t flex justify-between text-xs">
+            <div className="mt-1.5 pt-1.5 border-t flex justify-between text-xs">
               <span className="text-muted-foreground">Speeds:</span>
               <span className="text-muted-foreground/70">
                 {(Object.keys(ROAD_SPEEDS) as RoadClass[])
