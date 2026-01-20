@@ -308,12 +308,41 @@ export function RouteLayer() {
     [map, waypoints]
   );
 
+  /**
+   * Check if a point is close to any existing anchor waypoint.
+   * Used to avoid creating new anchors when user interacts with existing ones.
+   */
+  const isNearExistingAnchor = useCallback(
+    (point: LatLng): boolean => {
+      const ANCHOR_THRESHOLD = 30; // meters - close enough to be clicking on anchor marker
+
+      for (const wp of waypoints) {
+        if (wp.type === 'anchor') {
+          const anchorPos = wp.snappedPosition || wp.position;
+          const dist = haversineDistance(point, anchorPos);
+          if (dist < ANCHOR_THRESHOLD) {
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+    [waypoints]
+  );
+
   // Handle mousedown on route line - start drag to create anchor
   const handleRouteMouseDown = useCallback(
     (e: maplibregl.MapMouseEvent) => {
       if (waypoints.length < 2 || routePath.length < 2) return;
 
       const clickedPoint: LatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+
+      // Check if clicking near an existing anchor - if so, let the Marker handle it
+      // This allows anchor markers to be dragged (to move) or clicked (to remove)
+      if (isNearExistingAnchor(clickedPoint)) {
+        return;
+      }
+
       const result = findClosestRoutePoint(clickedPoint);
 
       if (result && result.distance < 100) {
@@ -337,7 +366,7 @@ export function RouteLayer() {
         }
       }
     },
-    [waypoints, routePath, findClosestRoutePoint, updateDragPreview, map]
+    [waypoints, routePath, findClosestRoutePoint, isNearExistingAnchor, updateDragPreview, map]
   );
 
   // Handle mousemove during drag
