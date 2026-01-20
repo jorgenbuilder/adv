@@ -16,6 +16,7 @@ import { useMapState, useRouteState } from '@/lib/store';
 import { MAPTILER_KEY } from '@/lib/constants';
 import { RoadLayer } from './RoadLayer';
 import { RouteLayer } from './RouteLayer';
+import { LegendCard } from './LegendCard';
 import type { Waypoint } from '@/types';
 
 // MapTiler satellite style URL with API key
@@ -206,6 +207,11 @@ export function Map() {
           Click on the map to add waypoints
         </div>
       )}
+
+      {/* Legend card overlay - positioned below navigation controls */}
+      <div className="absolute top-32 right-2.5 z-10">
+        <LegendCard />
+      </div>
     </div>
   );
 }

@@ -51,6 +51,7 @@ interface FilterState {
   toggleRoadSurface: (roadSurface: RoadSurface) => void;
   setRoadClassFilter: (roadClass: RoadClass, enabled: boolean) => void;
   setRoadSurfaceFilter: (roadSurface: RoadSurface, enabled: boolean) => void;
+  setRoadFilters: (filters: RoadFilters) => void;
   resetFilters: () => void;
 }
 
@@ -243,6 +244,8 @@ export const useAppStore = create<AppState>()(
           undefined,
           'setRoadSurfaceFilter'
         ),
+      setRoadFilters: (filters) =>
+        set({ roadFilters: filters }, undefined, 'setRoadFilters'),
       resetFilters: () =>
         set({ roadFilters: defaultRoadFilters }, undefined, 'resetFilters'),
 
@@ -309,6 +312,7 @@ export const useFilterState = () =>
       toggleRoadSurface: state.toggleRoadSurface,
       setRoadClassFilter: state.setRoadClassFilter,
       setRoadSurfaceFilter: state.setRoadSurfaceFilter,
+      setRoadFilters: state.setRoadFilters,
       resetFilters: state.resetFilters,
     }))
   );

@@ -23,10 +23,12 @@ export function useURLSync() {
   const zoom = useAppStore((s) => s.zoom);
   const pitch = useAppStore((s) => s.pitch);
   const bearing = useAppStore((s) => s.bearing);
+  const roadFilters = useAppStore((s) => s.roadFilters);
 
   // Get actions from store
   const addWaypoint = useAppStore((s) => s.addWaypoint);
   const setView = useAppStore((s) => s.setView);
+  const setRoadFilters = useAppStore((s) => s.setRoadFilters);
 
   // Restore state from URL on mount
   useEffect(() => {
@@ -61,7 +63,12 @@ export function useURLSync() {
     if (Object.keys(viewUpdate).length > 0) {
       setView(viewUpdate);
     }
-  }, [addWaypoint, setView]);
+
+    // Restore filters
+    if (urlState.filters) {
+      setRoadFilters(urlState.filters);
+    }
+  }, [addWaypoint, setView, setRoadFilters]);
 
   // Update URL when state changes (debounced)
   useEffect(() => {
@@ -85,6 +92,7 @@ export function useURLSync() {
         zoom,
         pitch,
         bearing,
+        filters: roadFilters,
       });
     }, DEBOUNCE_DELAY);
 
@@ -94,7 +102,7 @@ export function useURLSync() {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [waypoints, center, zoom, pitch, bearing]);
+  }, [waypoints, center, zoom, pitch, bearing, roadFilters]);
 }
 
 /**
