@@ -34,15 +34,14 @@ export default function Home() {
           <ShareButton />
         </div>
 
-        {/* Mobile: Floating action buttons */}
-        <div className="md:hidden absolute bottom-0 left-0 right-0 p-3 safe-area-bottom">
-          {/* Waypoint count badge */}
+        {/* Mobile: Floating waypoints button - top left */}
+        <div className="md:hidden absolute top-4 left-4 safe-area-top safe-area-left z-10">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 variant="secondary"
-                size="lg"
-                className="w-full shadow-lg h-14 text-base gap-3"
+                size="default"
+                className="shadow-lg gap-2"
               >
                 <div className="relative">
                   <MapPin className="w-5 h-5" />
@@ -54,7 +53,7 @@ export default function Home() {
                 </div>
                 <span>
                   {waypoints.length === 0
-                    ? 'Tap map to add waypoints'
+                    ? 'Waypoints'
                     : waypoints.length === 1
                     ? '1 Waypoint'
                     : `${waypoints.length} Waypoints`}
