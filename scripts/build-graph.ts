@@ -21,6 +21,9 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const INPUT_GEOJSON = path.join(DATA_DIR, 'vi-roads.geojson');
 const OUTPUT_GRAPH = path.join(process.cwd(), 'public', 'vi-graph.json');
 
+// Road class types
+type RoadClass = 'highway' | 'arterial' | 'collector' | 'local' | 'resource' | 'decommissioned';
+
 // Types for the graph
 interface LatLng {
   lat: number;
@@ -37,6 +40,7 @@ interface GraphEdge {
   targetNodeId: string;
   roadSegmentId: string;
   weight: number; // Distance in meters
+  roadClass: RoadClass; // Road classification for travel time calculation
 }
 
 interface Graph {
@@ -143,8 +147,22 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
   let edgeCount = 0;
   let segmentCounter = 0;
 
+  // Normalize road class from GeoJSON properties
+  function normalizeRoadClass(rawClass: string | undefined | null): RoadClass {
+    const rc = (rawClass || 'local').toLowerCase();
+    if (rc === 'highway') return 'highway';
+    if (rc === 'arterial') return 'arterial';
+    if (rc === 'collector') return 'collector';
+    if (rc === 'local') return 'local';
+    if (rc === 'resource') return 'resource';
+    if (rc === 'decommissioned') return 'decommissioned';
+    return 'local'; // Default fallback
+  }
+
   for (let i = 0; i < geojson.features.length; i++) {
     const feature = geojson.features[i];
+    const properties = feature.properties || {};
+    const roadClass = normalizeRoadClass(properties.RD_CLASS);
 
     // Handle both LineString and MultiLineString geometries
     let coordArrays: number[][][];
@@ -172,17 +190,19 @@ function buildGraph(geojson: GeoJSON.FeatureCollection): Graph {
       const length = lineStringLength(coords);
       const segmentId = `s${segmentCounter++}`;
 
-      // Add bidirectional edges
+      // Add bidirectional edges with road class
       nodes[startNodeId].edges.push({
         targetNodeId: endNodeId,
         roadSegmentId: segmentId,
         weight: length,
+        roadClass,
       });
 
       nodes[endNodeId].edges.push({
         targetNodeId: startNodeId,
         roadSegmentId: segmentId,
         weight: length,
+        roadClass,
       });
 
       edgeCount += 2;

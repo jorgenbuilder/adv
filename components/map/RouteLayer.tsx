@@ -234,48 +234,75 @@ export function RouteLayer() {
         (wp) => wp.snappedPosition || wp.position
       );
 
-      // Calculate the route and track segment boundaries
-      const fullPath: LatLng[] = [];
-      const segments: RouteSegment[] = [];
-      let totalDistance = 0;
-
-      // Calculate route for each consecutive pair of waypoints
-      for (let i = 0; i < positions.length - 1; i++) {
-        const segmentStart = fullPath.length;
-        const segmentResult = await calculateRoute([positions[i], positions[i + 1]]);
-
-        if (cancelled) return;
-
-        if (segmentResult && segmentResult.path.length > 0) {
-          // Avoid duplicating points at segment boundaries
-          const startIdx = fullPath.length > 0 ? 1 : 0;
-          fullPath.push(...segmentResult.path.slice(startIdx));
-          totalDistance += segmentResult.distance;
-        } else {
-          // Fallback: straight line
-          if (fullPath.length === 0) {
-            fullPath.push(positions[i]);
-          }
-          fullPath.push(positions[i + 1]);
-          totalDistance += haversineDistance(positions[i], positions[i + 1]);
-        }
-
-        segments.push({
-          startWaypointIndex: i,
-          startPathIndex: segmentStart,
-          endPathIndex: fullPath.length - 1,
-        });
-      }
+      // Calculate the full route at once to get leg data
+      const routeResult = await calculateRoute(positions);
 
       if (cancelled) return;
 
-      setRoutePath(fullPath);
-      segmentsRef.current = segments;
-      setCalculatedRoute({
-        waypoints,
-        path: fullPath,
-        distance: totalDistance,
-      });
+      if (routeResult && routeResult.path.length > 0) {
+        // Build segment index from legs
+        const segments: RouteSegment[] = [];
+        let pathIndex = 0;
+
+        for (let i = 0; i < positions.length - 1; i++) {
+          const segmentStart = pathIndex;
+          // Each leg corresponds to one pair of waypoints
+          // Estimate segment end based on path proportions
+          const segmentEnd = Math.min(
+            routeResult.path.length - 1,
+            i === positions.length - 2
+              ? routeResult.path.length - 1
+              : Math.floor(((i + 1) / (positions.length - 1)) * routeResult.path.length)
+          );
+
+          segments.push({
+            startWaypointIndex: i,
+            startPathIndex: segmentStart,
+            endPathIndex: segmentEnd,
+          });
+
+          pathIndex = segmentEnd;
+        }
+
+        setRoutePath(routeResult.path);
+        segmentsRef.current = segments;
+        setCalculatedRoute({
+          waypoints,
+          path: routeResult.path,
+          distance: routeResult.distance,
+          legs: routeResult.legs,
+          distanceByRoadClass: routeResult.distanceByRoadClass,
+          travelTime: routeResult.travelTime,
+          travelTimeByRoadClass: routeResult.travelTimeByRoadClass,
+        });
+      } else {
+        // Fallback: straight line path
+        const fullPath: LatLng[] = [];
+        const segments: RouteSegment[] = [];
+        let totalDistance = 0;
+
+        for (let i = 0; i < positions.length; i++) {
+          const segmentStart = fullPath.length;
+          fullPath.push(positions[i]);
+
+          if (i > 0) {
+            totalDistance += haversineDistance(positions[i - 1], positions[i]);
+            segments.push({
+              startWaypointIndex: i - 1,
+              startPathIndex: segmentStart - 1,
+              endPathIndex: segmentStart,
+            });
+          }
+        }
+
+        setRoutePath(fullPath);
+        segmentsRef.current = segments;
+        setCalculatedRoute({
+          waypoints,
+          path: fullPath,
+          distance: totalDistance,
+        });
+      }
     };
 
     updateRoute();

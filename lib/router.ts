@@ -4,8 +4,52 @@
  * This module provides pathfinding on the pre-built road graph.
  */
 
-import type { LatLng, GraphNode, GraphEdge } from '@/types';
+import type {
+  LatLng,
+  GraphNode,
+  GraphEdge,
+  RoadClass,
+  RoadClassDistances,
+  RoadClassTravelTimes,
+  RouteLeg,
+} from '@/types';
 import { ASSET_PATHS } from './constants';
+
+/**
+ * Baseline travel speeds by road class (km/h)
+ * These are reasonable estimates for Vancouver Island roads
+ */
+export const ROAD_SPEEDS: Record<RoadClass, number> = {
+  highway: 100,
+  arterial: 80,
+  collector: 60,
+  local: 50,
+  resource: 40,
+  decommissioned: 20,
+};
+
+/**
+ * Create empty road class distances/times record
+ */
+function createEmptyRoadClassRecord(): RoadClassDistances {
+  return {
+    highway: 0,
+    arterial: 0,
+    collector: 0,
+    local: 0,
+    resource: 0,
+    decommissioned: 0,
+  };
+}
+
+/**
+ * Calculate travel time in seconds for a distance on a road class
+ */
+function calculateTravelTime(distanceMeters: number, roadClass: RoadClass): number {
+  const speedKmh = ROAD_SPEEDS[roadClass];
+  const speedMps = (speedKmh * 1000) / 3600; // Convert km/h to m/s
+  return distanceMeters / speedMps;
+}
 
 /**
  * Graph structure loaded from JSON
@@ -26,6 +70,9 @@ export interface RouteResult {
   path: LatLng[];
   distance: number; // Total distance in meters
   nodeIds: string[]; // IDs of nodes along the path
+  distanceByRoadClass: RoadClassDistances; // Distance breakdown by road type
+  travelTime: number; // Total travel time in seconds
+  travelTimeByRoadClass: RoadClassTravelTimes; // Travel time breakdown by road type
 }
 
 // Cached graph instance
@@ -137,7 +184,7 @@ export function dijkstra(
   endNodeId: string
 ): RouteResult | null {
   const distances: Record<string, number> = {};
-  const previous: Record<string, string | null> = {};
+  const previous: Record<string, { nodeId: string; edge: GraphEdge } | null> = {};
   const visited: Set<string> = new Set();
   const queue = new PriorityQueue<string>();
 
@@ -175,7 +222,7 @@ export function dijkstra(
 
       if (newDistance < distances[edge.targetNodeId]) {
         distances[edge.targetNodeId] = newDistance;
-        previous[edge.targetNodeId] = currentId;
+        previous[edge.targetNodeId] = { nodeId: currentId, edge };
         queue.enqueue(edge.targetNodeId, newDistance);
       }
     }
@@ -186,13 +233,36 @@ export function dijkstra(
     return null;
   }
 
-  // Reconstruct path
+  // Reconstruct path and track road class distances
   const nodeIds: string[] = [];
+  const edges: GraphEdge[] = [];
   let current: string | null = endNodeId;
 
   while (current !== null) {
     nodeIds.unshift(current);
-    current = previous[current];
+    const prev: { nodeId: string; edge: GraphEdge } | null = previous[current];
+    if (prev) {
+      edges.unshift(prev.edge);
+      current = prev.nodeId;
+    } else {
+      current = null;
+    }
+  }
+
+  // Calculate road class breakdown
+  const distanceByRoadClass = createEmptyRoadClassRecord();
+  const travelTimeByRoadClass = createEmptyRoadClassRecord();
+
+  for (const edge of edges) {
+    const roadClass = edge.roadClass || 'local';
+    distanceByRoadClass[roadClass] += edge.weight;
+    travelTimeByRoadClass[roadClass] += calculateTravelTime(edge.weight, roadClass);
+  }
+
+  // Calculate total travel time
+  let travelTime = 0;
+  for (const roadClass of Object.keys(travelTimeByRoadClass) as RoadClass[]) {
+    travelTime += travelTimeByRoadClass[roadClass];
   }
 
   // Build path coordinates
@@ -202,7 +272,17 @@ export function dijkstra(
     path,
     distance: distances[endNodeId],
     nodeIds,
+    distanceByRoadClass,
+    travelTime,
+    travelTimeByRoadClass,
   };
+}
+
+/**
+ * Extended route result with per-waypoint leg data
+ */
+export interface ExtendedRouteResult extends RouteResult {
+  legs: RouteLeg[];
 }
 
 /**
@@ -210,18 +290,29 @@ export function dijkstra(
  */
 export async function calculateRoute(
   waypoints: LatLng[]
-): Promise<RouteResult | null> {
+): Promise<ExtendedRouteResult | null> {
   if (waypoints.length < 2) {
     return null;
   }
 
   const graph = await loadGraph();
+  const emptyDistances = createEmptyRoadClassRecord();
+  const emptyTimes = createEmptyRoadClassRecord();
+
   if (!graph) {
     // No graph available - return straight line path
+    const distance = calculateStraightLineDistance(waypoints);
+    // Assume local roads for fallback
+    const fallbackDistances = { ...emptyDistances, local: distance };
+    const fallbackTimes = { ...emptyTimes, local: calculateTravelTime(distance, 'local') };
     return {
       path: [...waypoints],
-      distance: calculateStraightLineDistance(waypoints),
+      distance,
       nodeIds: [],
+      distanceByRoadClass: fallbackDistances,
+      travelTime: fallbackTimes.local,
+      travelTimeByRoadClass: fallbackTimes,
+      legs: [],
     };
   }
 
@@ -231,17 +322,27 @@ export async function calculateRoute(
   // Check if all waypoints have corresponding nodes
   if (waypointNodes.some((n) => n === null)) {
     // Some waypoints are too far from the road network
+    const distance = calculateStraightLineDistance(waypoints);
+    const fallbackDistances = { ...emptyDistances, local: distance };
+    const fallbackTimes = { ...emptyTimes, local: calculateTravelTime(distance, 'local') };
     return {
       path: [...waypoints],
-      distance: calculateStraightLineDistance(waypoints),
+      distance,
       nodeIds: [],
+      distanceByRoadClass: fallbackDistances,
+      travelTime: fallbackTimes.local,
+      travelTimeByRoadClass: fallbackTimes,
+      legs: [],
     };
   }
 
   // Calculate route between consecutive waypoints
   const fullPath: LatLng[] = [];
   const allNodeIds: string[] = [];
+  const legs: RouteLeg[] = [];
   let totalDistance = 0;
+  const totalDistanceByRoadClass = createEmptyRoadClassRecord();
+  const totalTravelTimeByRoadClass = createEmptyRoadClassRecord();
 
   for (let i = 0; i < waypointNodes.length - 1; i++) {
     const startNode = waypointNodes[i]!;
@@ -255,7 +356,25 @@ export async function calculateRoute(
         fullPath.push(startNode.position);
       }
       fullPath.push(endNode.position);
-      totalDistance += haversineDistance(startNode.position, endNode.position);
+      const straightLineDistance = haversineDistance(startNode.position, endNode.position);
+      totalDistance += straightLineDistance;
+
+      // Create leg with local road assumption
+      const legDistances = { ...emptyDistances, local: straightLineDistance };
+      const legTravelTime = calculateTravelTime(straightLineDistance, 'local');
+      const legTimes = { ...emptyTimes, local: legTravelTime };
+
+      legs.push({
+        fromWaypointIndex: i,
+        toWaypointIndex: i + 1,
+        distance: straightLineDistance,
+        distanceByRoadClass: legDistances,
+        travelTime: legTravelTime,
+        travelTimeByRoadClass: legTimes,
+      });
+
+      totalDistanceByRoadClass.local += straightLineDistance;
+      totalTravelTimeByRoadClass.local += legTravelTime;
       continue;
     }
 
@@ -274,12 +393,38 @@ export async function calculateRoute(
         ? 1
         : 0;
     allNodeIds.push(...segment.nodeIds.slice(nodeStartIndex));
+
+    // Create leg data
+    legs.push({
+      fromWaypointIndex: i,
+      toWaypointIndex: i + 1,
+      distance: segment.distance,
+      distanceByRoadClass: segment.distanceByRoadClass,
+      travelTime: segment.travelTime,
+      travelTimeByRoadClass: segment.travelTimeByRoadClass,
+    });
+
+    // Accumulate totals
+    for (const roadClass of Object.keys(segment.distanceByRoadClass) as RoadClass[]) {
+      totalDistanceByRoadClass[roadClass] += segment.distanceByRoadClass[roadClass];
+      totalTravelTimeByRoadClass[roadClass] += segment.travelTimeByRoadClass[roadClass];
+    }
+  }
+
+  // Calculate total travel time
+  let totalTravelTime = 0;
+  for (const roadClass of Object.keys(totalTravelTimeByRoadClass) as RoadClass[]) {
+    totalTravelTime += totalTravelTimeByRoadClass[roadClass];
   }
 
   return {
     path: fullPath,
     distance: totalDistance,
     nodeIds: allNodeIds,
+    distanceByRoadClass: totalDistanceByRoadClass,
+    travelTime: totalTravelTime,
+    travelTimeByRoadClass: totalTravelTimeByRoadClass,
+    legs,
   };
 }
 
