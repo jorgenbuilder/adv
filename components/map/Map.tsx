@@ -14,7 +14,16 @@ import { MAPTILER_KEY } from '@/lib/constants';
 import { RoadLayer } from './RoadLayer';
 import { RouteLayer } from './RouteLayer';
 import { LegendCard } from './LegendCard';
-import type { Waypoint } from '@/types';
+import type { Waypoint, LatLng } from '@/types';
+
+/**
+ * Context for passing drag state to RouteLayer
+ */
+export interface AnchorDragState {
+  isDragging: boolean;
+  segmentIndex: number;
+  position: LatLng | null;
+}
 
 // MapTiler satellite style URL with API key
 const SATELLITE_STYLE = `https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`;
@@ -226,6 +235,7 @@ function WaypointMarkerComponent({
 }: WaypointMarkerProps) {
   const position = waypoint.snappedPosition || waypoint.position;
   const isAnchor = waypoint.type === 'anchor';
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <Marker
@@ -237,28 +247,36 @@ function WaypointMarkerComponent({
     >
       <div
         onClick={(e) => onClick(waypoint.id, e)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`
           cursor-pointer select-none transition-transform
           ${isSelected ? 'scale-125' : 'hover:scale-110'}
         `}
       >
         {isAnchor ? (
-          // Anchor point - smaller diamond shape
+          // Anchor point - white circle with double outline (thick black + thin white)
           <>
             <div
               className={`
-                w-4 h-4 rotate-45 flex items-center justify-center
-                shadow-lg border-2
-                ${isSelected
-                  ? 'bg-orange-500 border-white'
-                  : 'bg-white border-blue-500'
+                w-4 h-4 rounded-full flex items-center justify-center
+                transition-all duration-150
+                ${isHovered || isSelected
+                  ? 'w-5 h-5 bg-blue-100'
+                  : 'bg-white'
                 }
               `}
+              style={{
+                // Double outline: thick black outer, thin white inner
+                boxShadow: isHovered || isSelected
+                  ? '0 0 0 2px white, 0 0 0 4px #1e40af, 0 2px 8px rgba(0,0,0,0.4)'
+                  : '0 0 0 2px white, 0 0 0 4px #1e293b, 0 2px 4px rgba(0,0,0,0.3)',
+              }}
             />
-            {/* Delete hint when selected */}
-            {isSelected && (
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-background px-2 py-1 rounded text-xs shadow">
-                Click to delete
+            {/* Tooltip on hover: "drag to move, click to remove" */}
+            {(isHovered || isSelected) && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white px-2 py-1 rounded text-xs shadow-lg pointer-events-none z-10">
+                drag to move, click to remove
               </div>
             )}
           </>

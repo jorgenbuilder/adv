@@ -12,6 +12,12 @@ const ROUTE_LAYER = 'route-line';
 const ROUTE_CASING_LAYER = 'route-casing';
 const ROUTE_HIT_LAYER = 'route-hit-area';
 
+// Layer IDs for the drag preview
+const DRAG_PREVIEW_SOURCE = 'drag-preview';
+const DRAG_PREVIEW_LAYER = 'drag-preview-line';
+const DRAG_ANCHOR_SOURCE = 'drag-anchor';
+const DRAG_ANCHOR_LAYER = 'drag-anchor-point';
+
 /**
  * Segment info for tracking which part of the route belongs to which waypoint pair
  */
@@ -22,9 +28,19 @@ interface RouteSegment {
 }
 
 /**
+ * State for dragging to create an anchor
+ */
+interface DragState {
+  isDragging: boolean;
+  segmentIndex: number;
+  startPosition: LatLng | null;
+  currentPosition: LatLng | null;
+}
+
+/**
  * Route layer for displaying the planned route between waypoints.
  * Uses Dijkstra's algorithm for pathfinding on the road network.
- * Supports clicking on the route to add anchor points.
+ * Supports dragging on the route to create and position anchor points.
  */
 export function RouteLayer() {
   const { current: map } = useMap();
@@ -33,6 +49,12 @@ export function RouteLayer() {
   const [routePath, setRoutePath] = useState<LatLng[]>([]);
   const segmentsRef = useRef<RouteSegment[]>([]);
   const sourceAddedRef = useRef(false);
+  const dragStateRef = useRef<DragState>({
+    isDragging: false,
+    segmentIndex: 0,
+    startPosition: null,
+    currentPosition: null,
+  });
 
   // Add source and layers when map is ready
   const setupLayers = useCallback(() => {
@@ -123,17 +145,71 @@ export function RouteLayer() {
       },
     });
 
+    // Add drag preview source and layer
+    maplibre.addSource(DRAG_PREVIEW_SOURCE, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: [],
+        },
+      },
+    });
+
+    maplibre.addLayer({
+      id: DRAG_PREVIEW_LAYER,
+      type: 'line',
+      source: DRAG_PREVIEW_SOURCE,
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      paint: {
+        'line-color': '#f97316', // Orange for preview
+        'line-width': 3,
+        'line-dasharray': [2, 2],
+        'line-opacity': 0.8,
+      },
+    });
+
+    // Add drag anchor preview source and layer
+    maplibre.addSource(DRAG_ANCHOR_SOURCE, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Point',
+          coordinates: [0, 0],
+        },
+      },
+    });
+
+    maplibre.addLayer({
+      id: DRAG_ANCHOR_LAYER,
+      type: 'circle',
+      source: DRAG_ANCHOR_SOURCE,
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#ffffff',
+        'circle-stroke-color': '#1e293b',
+        'circle-stroke-width': 3,
+        'circle-opacity': 0.9,
+      },
+    });
+
     sourceAddedRef.current = true;
   }, [map]);
 
-  // Handle click on route line
-  const handleRouteClick = useCallback(
-    (e: maplibregl.MapMouseEvent) => {
-      if (waypoints.length < 2 || routePath.length < 2) return;
+  /**
+   * Find the closest point on route and which segment it belongs to
+   */
+  const findClosestRoutePoint = useCallback(
+    (clickedPoint: LatLng): { point: LatLng; segmentIndex: number; distance: number } | null => {
+      if (routePath.length < 2) return null;
 
-      const clickedPoint: LatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-
-      // Find the closest point on the route and which segment it belongs to
       let closestDistance = Infinity;
       let closestPoint: LatLng | null = null;
       let closestSegmentIndex = 0;
@@ -162,13 +238,161 @@ export function RouteLayer() {
         }
       }
 
-      if (closestPoint && closestDistance < 100) {
-        // Within 100m of route line
-        // Insert anchor point after the segment's start waypoint
-        insertWaypoint(closestPoint, closestSegmentIndex, 'anchor');
+      if (!closestPoint) return null;
+      return { point: closestPoint, segmentIndex: closestSegmentIndex, distance: closestDistance };
+    },
+    [routePath]
+  );
+
+  /**
+   * Update the drag preview visualization
+   */
+  const updateDragPreview = useCallback(
+    (position: LatLng | null, segmentIndex: number) => {
+      if (!map || !sourceAddedRef.current) return;
+
+      const maplibre = map.getMap();
+      const previewSource = maplibre.getSource(DRAG_PREVIEW_SOURCE) as maplibregl.GeoJSONSource;
+      const anchorSource = maplibre.getSource(DRAG_ANCHOR_SOURCE) as maplibregl.GeoJSONSource;
+
+      if (!previewSource || !anchorSource) return;
+
+      if (!position) {
+        // Clear preview
+        previewSource.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: [] },
+        });
+        anchorSource.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [0, 0] },
+        });
+        return;
+      }
+
+      // Get waypoint positions for this segment
+      const startWaypoint = waypoints[segmentIndex];
+      const endWaypoint = waypoints[segmentIndex + 1];
+
+      if (!startWaypoint || !endWaypoint) return;
+
+      const startPos = startWaypoint.snappedPosition || startWaypoint.position;
+      const endPos = endWaypoint.snappedPosition || endWaypoint.position;
+
+      // Draw preview lines from start waypoint -> drag point -> end waypoint
+      previewSource.setData({
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [startPos.lng, startPos.lat],
+            [position.lng, position.lat],
+            [endPos.lng, endPos.lat],
+          ],
+        },
+      });
+
+      // Show anchor preview at current position
+      anchorSource.setData({
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Point',
+          coordinates: [position.lng, position.lat],
+        },
+      });
+    },
+    [map, waypoints]
+  );
+
+  // Handle mousedown on route line - start drag to create anchor
+  const handleRouteMouseDown = useCallback(
+    (e: maplibregl.MapMouseEvent) => {
+      if (waypoints.length < 2 || routePath.length < 2) return;
+
+      const clickedPoint: LatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      const result = findClosestRoutePoint(clickedPoint);
+
+      if (result && result.distance < 100) {
+        // Within 100m of route line - start dragging
+        e.preventDefault();
+
+        dragStateRef.current = {
+          isDragging: true,
+          segmentIndex: result.segmentIndex,
+          startPosition: result.point,
+          currentPosition: clickedPoint,
+        };
+
+        // Show initial preview
+        updateDragPreview(clickedPoint, result.segmentIndex);
+
+        // Disable map drag
+        const maplibre = map?.getMap();
+        if (maplibre) {
+          maplibre.dragPan.disable();
+        }
       }
     },
-    [waypoints, routePath, insertWaypoint]
+    [waypoints, routePath, findClosestRoutePoint, updateDragPreview, map]
+  );
+
+  // Handle mousemove during drag
+  const handleMouseMove = useCallback(
+    (e: maplibregl.MapMouseEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+
+      const position: LatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      dragStateRef.current.currentPosition = position;
+
+      // Update preview
+      updateDragPreview(position, dragStateRef.current.segmentIndex);
+    },
+    [updateDragPreview]
+  );
+
+  // Handle mouseup - finish drag and create anchor
+  const handleMouseUp = useCallback(
+    (e: maplibregl.MapMouseEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+
+      const position: LatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      const { segmentIndex, startPosition } = dragStateRef.current;
+
+      // Clear drag state
+      dragStateRef.current = {
+        isDragging: false,
+        segmentIndex: 0,
+        startPosition: null,
+        currentPosition: null,
+      };
+
+      // Clear preview
+      updateDragPreview(null, 0);
+
+      // Re-enable map drag
+      const maplibre = map?.getMap();
+      if (maplibre) {
+        maplibre.dragPan.enable();
+      }
+
+      // Check if user actually dragged (not just clicked)
+      // If start and end positions are close, it's a click - don't create anchor
+      if (startPosition) {
+        const dragDistance = haversineDistance(startPosition, position);
+        if (dragDistance < 10) {
+          // Less than 10m movement - treat as click, don't create
+          return;
+        }
+      }
+
+      // Insert anchor point after the segment's start waypoint
+      insertWaypoint(position, segmentIndex, 'anchor');
+    },
+    [map, insertWaypoint, updateDragPreview]
   );
 
   // Set up layers and event listeners when map style loads
@@ -192,31 +416,60 @@ export function RouteLayer() {
     };
   }, [map, setupLayers]);
 
-  // Set up click handlers
+  // Set up drag handlers for creating anchors
   useEffect(() => {
     if (!map || !sourceAddedRef.current) return;
 
     const maplibre = map.getMap();
 
-    // Change cursor on hover
+    // Change cursor on hover to indicate draggable
     const onMouseEnter = () => {
-      maplibre.getCanvas().style.cursor = 'pointer';
+      if (!dragStateRef.current.isDragging) {
+        maplibre.getCanvas().style.cursor = 'grab';
+      }
     };
 
     const onMouseLeave = () => {
-      maplibre.getCanvas().style.cursor = 'crosshair';
+      if (!dragStateRef.current.isDragging) {
+        maplibre.getCanvas().style.cursor = 'crosshair';
+      }
+    };
+
+    // Handle mousedown on route - start drag
+    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+      handleRouteMouseDown(e);
+      if (dragStateRef.current.isDragging) {
+        maplibre.getCanvas().style.cursor = 'grabbing';
+      }
+    };
+
+    // Handle mousemove anywhere on map during drag
+    const onMouseMove = (e: maplibregl.MapMouseEvent) => {
+      handleMouseMove(e);
+    };
+
+    // Handle mouseup anywhere on map - finish drag
+    const onMouseUp = (e: maplibregl.MapMouseEvent) => {
+      if (dragStateRef.current.isDragging) {
+        handleMouseUp(e);
+        maplibre.getCanvas().style.cursor = 'crosshair';
+      }
     };
 
     maplibre.on('mouseenter', ROUTE_HIT_LAYER, onMouseEnter);
     maplibre.on('mouseleave', ROUTE_HIT_LAYER, onMouseLeave);
-    maplibre.on('click', ROUTE_HIT_LAYER, handleRouteClick);
+    maplibre.on('mousedown', ROUTE_HIT_LAYER, onMouseDown);
+    maplibre.on('mousemove', onMouseMove);
+    maplibre.on('mouseup', onMouseUp);
 
     return () => {
       maplibre.off('mouseenter', ROUTE_HIT_LAYER, onMouseEnter);
       maplibre.off('mouseleave', ROUTE_HIT_LAYER, onMouseLeave);
-      maplibre.off('click', ROUTE_HIT_LAYER, handleRouteClick);
+      maplibre.off('mousedown', ROUTE_HIT_LAYER, onMouseDown);
+      maplibre.off('mousemove', onMouseMove);
+      maplibre.off('mouseup', onMouseUp);
     };
-  }, [map, handleRouteClick]);
+  }, [map, handleRouteMouseDown, handleMouseMove, handleMouseUp]);
 
   // Calculate route when waypoints change
   useEffect(() => {

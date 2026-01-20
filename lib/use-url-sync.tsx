@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from './store';
 import { parseStateFromURL, updateURL } from './url-state';
+import type { WaypointType } from '@/types';
 
 // Debounce delay for URL updates (ms)
 const DEBOUNCE_DELAY = 500;
@@ -39,10 +40,10 @@ export function useURLSync() {
 
     const urlState = parseStateFromURL();
 
-    // Restore waypoints
+    // Restore waypoints (with type information preserved)
     if (urlState.waypoints.length > 0) {
-      urlState.waypoints.forEach((position) => {
-        addWaypoint(position);
+      urlState.waypoints.forEach((wp) => {
+        addWaypoint(wp.position, wp.type as WaypointType);
       });
     }
 
@@ -89,12 +90,14 @@ export function useURLSync() {
 
     // Set new timer
     debounceTimer.current = setTimeout(() => {
-      const waypointPositions = waypoints.map(
-        (wp) => wp.snappedPosition || wp.position
-      );
+      // Encode waypoints with their type information (primary vs anchor)
+      const encodedWaypoints = waypoints.map((wp) => ({
+        position: wp.snappedPosition || wp.position,
+        type: wp.type,
+      }));
 
       updateURL({
-        waypoints: waypointPositions,
+        waypoints: encodedWaypoints,
         center,
         zoom,
         pitch,

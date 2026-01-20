@@ -12,7 +12,15 @@
  * URL format: /?w=48.4284,-123.3656,48.5,-123.4&z=10&c=48.5,-123.4&p=45&b=0&f=2047
  */
 
-import type { LatLng, RoadFilters, RoadClass, RoadSurface, RoadPreferences } from '@/types';
+import type { LatLng, RoadFilters, RoadClass, RoadSurface, RoadPreferences, WaypointType } from '@/types';
+
+/**
+ * Encoded waypoint with type information
+ */
+export interface EncodedWaypoint {
+  position: LatLng;
+  type: WaypointType;
+}
 
 // Bitfield positions for road filters
 // Road classes (bits 0-5)
@@ -198,34 +206,68 @@ const COORD_PRECISION = 5;
 
 /**
  * Parse waypoints from URL parameter
- * Format: "lat1,lng1,lat2,lng2,..."
+ * Format: "lat1,lng1,lat2,lng2,..." (legacy) or with type markers "lat1,lng1,a:lat2,lng2,lat3,lng3"
+ * The "a:" prefix indicates an anchor point
  */
-export function parseWaypointsFromURL(param: string | null): LatLng[] {
+export function parseWaypointsFromURL(param: string | null): EncodedWaypoint[] {
   if (!param) return [];
 
-  const values = param.split(',').map(Number);
-  const waypoints: LatLng[] = [];
+  // Split by commas, but keep potential "a:" prefixes attached
+  const parts = param.split(',');
+  const waypoints: EncodedWaypoint[] = [];
 
-  for (let i = 0; i < values.length - 1; i += 2) {
-    const lat = values[i];
-    const lng = values[i + 1];
-    if (!isNaN(lat) && !isNaN(lng)) {
-      waypoints.push({ lat, lng });
+  let i = 0;
+  while (i < parts.length - 1) {
+    let latStr = parts[i];
+    const lngStr = parts[i + 1];
+
+    // Check for anchor prefix
+    let type: WaypointType = 'primary';
+    if (latStr.startsWith('a:')) {
+      type = 'anchor';
+      latStr = latStr.substring(2);
     }
+
+    const lat = Number(latStr);
+    const lng = Number(lngStr);
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      waypoints.push({ position: { lat, lng }, type });
+    }
+
+    i += 2;
   }
 
   return waypoints;
 }
 
 /**
- * Serialize waypoints to URL parameter
+ * Legacy parse function that returns just positions (for backward compatibility)
  */
-export function serializeWaypointsToURL(waypoints: LatLng[]): string {
+export function parseWaypointPositionsFromURL(param: string | null): LatLng[] {
+  return parseWaypointsFromURL(param).map(wp => wp.position);
+}
+
+/**
+ * Serialize waypoints to URL parameter
+ * Format: "lat1,lng1,a:lat2,lng2,lat3,lng3" where "a:" prefix indicates anchor
+ */
+export function serializeWaypointsToURL(waypoints: EncodedWaypoint[]): string {
   if (waypoints.length === 0) return '';
 
   return waypoints
-    .map((wp) => `${wp.lat.toFixed(COORD_PRECISION)},${wp.lng.toFixed(COORD_PRECISION)}`)
+    .map((wp) => {
+      const prefix = wp.type === 'anchor' ? 'a:' : '';
+      return `${prefix}${wp.position.lat.toFixed(COORD_PRECISION)},${wp.position.lng.toFixed(COORD_PRECISION)}`;
+    })
     .join(',');
+}
+
+/**
+ * Legacy serialize function for just positions (for backward compatibility)
+ */
+export function serializePositionsToURL(positions: LatLng[]): string {
+  return serializeWaypointsToURL(positions.map(pos => ({ position: pos, type: 'primary' as WaypointType })));
 }
 
 /**
@@ -265,7 +307,7 @@ export function parseNumberFromURL(
  * Build full URL with state parameters
  */
 export function buildShareURL(params: {
-  waypoints: LatLng[];
+  waypoints: EncodedWaypoint[];
   center: LatLng;
   zoom: number;
   pitch?: number;
@@ -275,7 +317,7 @@ export function buildShareURL(params: {
 }): string {
   const searchParams = new URLSearchParams();
 
-  // Add waypoints
+  // Add waypoints (with anchor type markers)
   const waypointsStr = serializeWaypointsToURL(params.waypoints);
   if (waypointsStr) {
     searchParams.set('w', waypointsStr);
@@ -318,7 +360,7 @@ export function buildShareURL(params: {
  * Parse state from current URL
  */
 export function parseStateFromURL(): {
-  waypoints: LatLng[];
+  waypoints: EncodedWaypoint[];
   center: LatLng | null;
   zoom: number | null;
   pitch: number | null;
@@ -370,7 +412,7 @@ export function parseStateFromURL(): {
  * Update URL without causing navigation
  */
 export function updateURL(params: {
-  waypoints: LatLng[];
+  waypoints: EncodedWaypoint[];
   center: LatLng;
   zoom: number;
   pitch?: number;
