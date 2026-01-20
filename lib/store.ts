@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import type {
   LatLng,
   Waypoint,
@@ -271,47 +272,55 @@ export const useAppStore = create<AppState>()(
 
 // Selector hooks for common patterns
 export const useMapState = () =>
-  useAppStore((state) => ({
-    center: state.center,
-    zoom: state.zoom,
-    pitch: state.pitch,
-    bearing: state.bearing,
-    setCenter: state.setCenter,
-    setZoom: state.setZoom,
-    setPitch: state.setPitch,
-    setBearing: state.setBearing,
-    setView: state.setView,
-  }));
+  useAppStore(
+    useShallow((state) => ({
+      center: state.center,
+      zoom: state.zoom,
+      pitch: state.pitch,
+      bearing: state.bearing,
+      setCenter: state.setCenter,
+      setZoom: state.setZoom,
+      setPitch: state.setPitch,
+      setBearing: state.setBearing,
+      setView: state.setView,
+    }))
+  );
 
 export const useRouteState = () =>
-  useAppStore((state) => ({
-    waypoints: state.waypoints,
-    calculatedRoute: state.calculatedRoute,
-    addWaypoint: state.addWaypoint,
-    insertWaypoint: state.insertWaypoint,
-    removeWaypoint: state.removeWaypoint,
-    updateWaypoint: state.updateWaypoint,
-    reorderWaypoints: state.reorderWaypoints,
-    clearRoute: state.clearRoute,
-    setCalculatedRoute: state.setCalculatedRoute,
-  }));
+  useAppStore(
+    useShallow((state) => ({
+      waypoints: state.waypoints,
+      calculatedRoute: state.calculatedRoute,
+      addWaypoint: state.addWaypoint,
+      insertWaypoint: state.insertWaypoint,
+      removeWaypoint: state.removeWaypoint,
+      updateWaypoint: state.updateWaypoint,
+      reorderWaypoints: state.reorderWaypoints,
+      clearRoute: state.clearRoute,
+      setCalculatedRoute: state.setCalculatedRoute,
+    }))
+  );
 
 export const useFilterState = () =>
-  useAppStore((state) => ({
-    roadFilters: state.roadFilters,
-    toggleRoadClass: state.toggleRoadClass,
-    toggleRoadSurface: state.toggleRoadSurface,
-    setRoadClassFilter: state.setRoadClassFilter,
-    setRoadSurfaceFilter: state.setRoadSurfaceFilter,
-    resetFilters: state.resetFilters,
-  }));
+  useAppStore(
+    useShallow((state) => ({
+      roadFilters: state.roadFilters,
+      toggleRoadClass: state.toggleRoadClass,
+      toggleRoadSurface: state.toggleRoadSurface,
+      setRoadClassFilter: state.setRoadClassFilter,
+      setRoadSurfaceFilter: state.setRoadSurfaceFilter,
+      resetFilters: state.resetFilters,
+    }))
+  );
 
 export const useUIState = () =>
-  useAppStore((state) => ({
-    filterPanelOpen: state.filterPanelOpen,
-    waypointPanelOpen: state.waypointPanelOpen,
-    setFilterPanelOpen: state.setFilterPanelOpen,
-    setWaypointPanelOpen: state.setWaypointPanelOpen,
-    toggleFilterPanel: state.toggleFilterPanel,
-    toggleWaypointPanel: state.toggleWaypointPanel,
-  }));
+  useAppStore(
+    useShallow((state) => ({
+      filterPanelOpen: state.filterPanelOpen,
+      waypointPanelOpen: state.waypointPanelOpen,
+      setFilterPanelOpen: state.setFilterPanelOpen,
+      setWaypointPanelOpen: state.setWaypointPanelOpen,
+      toggleFilterPanel: state.toggleFilterPanel,
+      toggleWaypointPanel: state.toggleWaypointPanel,
+    }))
+  );

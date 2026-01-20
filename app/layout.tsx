@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { URLSyncProvider } from "@/lib/use-url-sync";
+import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -36,9 +36,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <URLSyncProvider>
+        <Providers>
           {children}
-        </URLSyncProvider>
+        </Providers>
         <Toaster position="bottom-center" />
       </body>
     </html>
